@@ -10,7 +10,13 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # Your application UI logic
     fluidPage(
-      h1("PCApp")
+      h1("PCApp"),
+      col_6(
+        mod_database_ui("database_1"),
+      ),
+      col_6(
+        mod_ts_upload_ui("ts_upload_1")
+      )
     )
   )
 }
