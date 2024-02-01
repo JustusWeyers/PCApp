@@ -7,8 +7,13 @@ Description: PCApp_DESC.
 License: MIT + file LICENSE
 Imports: 
     config (>= 0.3.2),
+    DBI,
     golem (>= 0.4.1),
-    shiny (>= 1.8.0)
+    RPostgres,
+    shiny (>= 1.8.0),
+    stats,
+    tools,
+    utils
 Suggests: 
     spelling,
     testthat (>= 3.0.0)
