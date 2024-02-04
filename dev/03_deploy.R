@@ -32,11 +32,11 @@ golem::add_shinyappsio_file()
 golem::add_shinyserver_file()
 
 ## Docker ----
-## If you want to deploy via a generic Dockerfile
-golem::add_dockerfile_with_renv()
+golem::add_dockerfile(sysreqs = FALSE, update_tar_gz = TRUE,
+                      build_golem_from_source = FALSE)
 
 ## If you want to deploy to ShinyProxy
-golem::add_dockerfile_with_renv_shinyproxy()
+golem::add_dockerfile_with_renv_shinyproxy(sysreqs = FALSE, update_tar_gz = TRUE)
 
 
 # Deploy to Posit Connect or ShinyApps.io

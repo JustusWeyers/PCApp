@@ -12,5 +12,9 @@ RUN Rscript -e 'remotes::install_version("golem",upgrade="never", version = "0.4
 COPY PCApp_*.tar.gz /app.tar.gz
 RUN R -e 'remotes::install_local("/app.tar.gz",upgrade="never")'
 RUN rm /app.tar.gz
-EXPOSE 80
-CMD R -e "options('shiny.port'=80,shiny.host='0.0.0.0');library(PCApp);PCApp::run_app()"
+
+# set host and port
+COPY Rprofile.site /usr/local/lib/R/etc/
+
+EXPOSE 3838
+CMD R -e "library(PCApp);PCApp::run_app()"
