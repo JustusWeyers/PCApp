@@ -38,9 +38,12 @@ golem::add_sass_file("custom")
 
 ## Add internal datasets ----
 ## If you have data in your package
-usethis::use_data_raw(name = "my_dataset", open = FALSE)
+apptextfiles = list.files(pattern="\\.csv$", path = "inst/language/")
+apptext = lapply(file.path("inst/language/",apptextfiles), \(x) read.csv(x, header = FALSE)[,1])
+names(apptext) = tools::file_path_sans_ext(apptextfiles)
+usethis::use_data(apptext, internal = TRUE, overwrite = TRUE)
 
-## Tests ----
+# Tests ----
 ## Add one line by test you want to create
 usethis::use_test("app")
 
