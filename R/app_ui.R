@@ -2,29 +2,45 @@
 #'
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
-#' @import shiny
-#' @import shinydashboard
+#' @importFrom shiny tagList tabsetPanel h1
+#' @importFrom shinydashboard dashboardPage dashboardHeader dashboardSidebar
+#' @importFrom shinydashboard sidebarMenuOutput dashboardBody tabItems
+#' @importFrom shinydashboard tabItem
+#'
 #' @noRd
 app_ui <- function(request) {
 
-  # golem_add_external_resources()
+  shiny::tagList(
 
-  dashboardPage(
+    # Leave this function for adding external resources
+    golem_add_external_resources(),
 
-    # Header
-    shinydashboard::dashboardHeader(title = 'PCApp'),
+    shinydashboard::dashboardPage(
 
-    # Sidebar
-    shinydashboard::dashboardSidebar(
-      shinydashboard::sidebarMenuOutput("menu")
-    ),
+      # Header
+      shinydashboard::dashboardHeader(title = 'PCApp'),
 
-    shinydashboard::dashboardBody(
-      shinydashboard::tabItems(
-        tabItem(
-          tabName = "settings", h2("Einstellungen"),
-          mod_database_ui("database_1"),
-          mod_ts_upload_ui("ts_upload_1")
+      # Sidebar
+      shinydashboard::dashboardSidebar(
+        shinydashboard::sidebarMenuOutput("sidebarmenu")
+      ),
+
+      # Body
+      shinydashboard::dashboardBody(
+        shinydashboard::tabItems(
+
+          # Import
+
+          # Analysis
+
+          # Settings
+          shinydashboard::tabItem(
+            tabName = "settings", shiny::tabsetPanel(
+              type = 'tabs',
+              h1("Hi!")
+              #mod_settings_tab_ui("settings_tab_db")
+            )
+          )
         )
       )
     )
@@ -36,18 +52,18 @@ app_ui <- function(request) {
 #' This function is internally used to add external
 #' resources inside the Shiny application.
 #'
-#' @import shiny
+#' @importFrom shiny tags
 #' @importFrom golem add_resource_path activate_js favicon bundle_resources
 #' @noRd
 golem_add_external_resources <- function() {
-  add_resource_path(
+  golem::add_resource_path(
     "www",
     app_sys("app/www")
   )
 
-  tags$head(
-    favicon(),
-    bundle_resources(
+  shiny::tags$head(
+    golem::favicon(),
+    golem::bundle_resources(
       path = app_sys("app/www"),
       app_title = "PCApp"
     )

@@ -31,7 +31,7 @@ mod_database_server <- function(id, r){
     ns <- session$ns
 
     # Establish database connection
-    con <- connect_db(hosts = c("172.22.0.2"))
+    con <- connect_db(hosts = c("localhost"))
 
     # Text output of connection status
     if (is.null(con)) output$db_status <- renderText({"No DB"})

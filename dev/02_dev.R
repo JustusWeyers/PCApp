@@ -24,10 +24,13 @@ attachment::att_amend_desc()
 ## Create a module infrastructure in R/
 golem::add_module(name = "database" ) # Name of the module
 golem::add_module(name = "ts_upload" ) # Name of the module
+golem::add_module(name = "settings_tab" ) # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
 golem::add_utils("connect_database")
+golem::add_utils("render_sidebar")
+
 
 ## External resources
 ## Creates .js and .css files at inst/app/www

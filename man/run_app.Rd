@@ -9,7 +9,7 @@ run_app(
   options = list(port = 3838),
   enableBookmarking = NULL,
   uiPattern = "/",
-  language = "en",
+  lang = "en",
   ...
 )
 }
