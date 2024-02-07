@@ -10,7 +10,7 @@ The goal of PCApp is to …
 
 ## Installation
 
-You can install the development version of PCApp like so:
+You can install the development version of PCApp via GitHub:
 
 ``` r
 # 1. Install remotes
@@ -21,7 +21,7 @@ remotes::install_github("https://github.com/JustusWeyers/PCApp.git")
 
 ## Run Application
 
-Start shiny application:
+Launch shiny application like so:
 
 ``` r
 library(PCApp)
