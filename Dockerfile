@@ -14,7 +14,7 @@ RUN R -e 'remotes::install_local("/app.tar.gz",upgrade="never")'
 RUN rm /app.tar.gz
 
 # set host and port
-COPY Rprofile.site /usr/local/lib/R/etc/
+COPY inst/Rprofile.site /usr/local/lib/R/etc/
 
 EXPOSE 3838
 CMD R -e "library(PCApp);PCApp::run_app()"

@@ -6,27 +6,27 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
+#' @importFrom shiny NS tagList tableOutput fileInput
 mod_ts_upload_ui <- function(id){
-  ns <- NS(id)
-  tagList(
+  ns <- shiny::NS(id)
+  shiny::tagList(
     col_12(
-      fileInput(ns("upload"), NULL, buttonLabel = "Upload...", multiple = TRUE),
-      tableOutput(ns("files"))
+      shiny::fileInput(ns("upload"), NULL, buttonLabel = "Upload...", multiple = TRUE),
+      shiny::tableOutput(ns("files"))
     )
   )
 }
 
 #' ts_upload Server Functions
 #'
+#' @importFrom shiny moduleServer observeEvent
+#'
 #' @noRd
 mod_ts_upload_server <- function(id, r){
-  moduleServer(id, function(input, output, session){
+  shiny::moduleServer(id, function(input, output, session){
     ns <- session$ns
 
-    r$my_other_module <- reactiveValues()
-
-    observeEvent(input$upload, {
+    shiny::observeEvent(input$upload, {
       r$ts_upload$upload <- setNames(input$upload$datapath, input$upload$name)
     })
 

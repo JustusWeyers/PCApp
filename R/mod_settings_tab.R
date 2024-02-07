@@ -6,19 +6,19 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
+#' @importFrom shiny NS tagList h1 moduleServer
 mod_settings_tab_ui <- function(id){
   ns <- NS(id)
   tagList(
-
+    h1("Hi!")
   )
 }
 
 #' settings_tab Server Functions
 #'
 #' @noRd
-mod_settings_tab_server <- function(id){
-  moduleServer(id, function(input, output, session){
+mod_settings_tab_server <- function(id, r){
+  shiny::moduleServer(id, function(input, output, session){
     ns <- session$ns
 
   })

@@ -2,7 +2,7 @@
 #'
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
-#' @importFrom shiny tagList tabsetPanel h1
+#' @importFrom shiny tagList tabsetPanel tabPanel h1
 #' @importFrom shinydashboard dashboardPage dashboardHeader dashboardSidebar
 #' @importFrom shinydashboard sidebarMenuOutput dashboardBody tabItems
 #' @importFrom shinydashboard tabItem
@@ -37,7 +37,9 @@ app_ui <- function(request) {
           shinydashboard::tabItem(
             tabName = "settings", shiny::tabsetPanel(
               type = 'tabs',
-              h1("Hi!")
+              shiny::tabPanel("Placeholder 1"),
+              shiny::tabPanel("Placeholder 2")
+              # h1("Hello")
               #mod_settings_tab_ui("settings_tab_db")
             )
           )

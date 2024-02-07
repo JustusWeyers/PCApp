@@ -1,6 +1,7 @@
 #' Run the Shiny Application
 #'
 #' @param ... arguments to pass to golem_opts.
+#' @param lang name of the language in internal data 'apptext' to use
 #' See `?golem::get_golem_options` for more details.
 #' @inheritParams shiny::shinyApp
 #'
