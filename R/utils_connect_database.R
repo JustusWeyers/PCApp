@@ -45,6 +45,13 @@ connect_db = function(hosts) {
     }
   }
 
-  # Otherwwise return sqlite con
-  return(DBI::dbConnect(RSQLite::SQLite(), system.file("extdata", "sqlite.db", package = "PCApp")))
+  # Fetch path of extdata
+  extdata_path = file.path(system.file(package = "PCApp"), "extdata")
+  # Does extdata exist?
+  extdata_check = system.file("extdata", package = "PCApp")
+  if (extdata_check == '') {
+    dir.create(extdata_path, showWarnings = FALSE)
+  }
+  # If no db has been connected return sqlite con
+  return(DBI::dbConnect(RSQLite::SQLite(), file.path(extdata_path, "db.sqlite")))
 }
