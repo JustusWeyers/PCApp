@@ -37,10 +37,11 @@ app_ui <- function(request) {
           shinydashboard::tabItem(
             tabName = "settings", shiny::tabsetPanel(
               type = 'tabs',
-              shiny::tabPanel("Placeholder 1"),
+              shiny::tabPanel("Placeholder 1",
+                              mod_database_ui("database_1")
+                              # mod_ts_upload_ui("ts_upload_1")
+                              ),
               shiny::tabPanel("Placeholder 2")
-              # h1("Hello")
-              #mod_settings_tab_ui("settings_tab_db")
             )
           )
         )

@@ -26,8 +26,9 @@ app_server <- function(input, output, session) {
   # Render sidebar menu based on txt elements
   output$sidebarmenu <- render_sidebar(apptext = txt[1:3])
 
-  mod_settings_tab_server("settings_tab_db", r)
+  # Modular code
+  mod_database_server('database_1', r)
 
-  # mod_database_server('database_1', r)
+  # mod_settings_tab_server("settings_tab_db", r)
   # mod_ts_upload_server('ts_upload_1', r)
 }

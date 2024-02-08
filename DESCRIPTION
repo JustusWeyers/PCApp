@@ -13,10 +13,10 @@ Imports:
     golem (>= 0.4.1),
     purrr,
     RPostgres,
+    RSQLite,
     shiny (>= 1.8.0),
     shinydashboard,
     stats,
-    tools,
     utils
 Suggests: 
     spelling,

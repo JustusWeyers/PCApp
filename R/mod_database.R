@@ -7,7 +7,7 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList verbatimTextOutput
-#' @importFrom DBI dbWriteTable dbListTables
+#' @importFrom DBI dbWriteTable dbListTables dbDisconnect
 #' @importFrom utils read.table
 
 
@@ -35,27 +35,29 @@ mod_database_server <- function(id, r){
     con <- connect_db(hosts = c("localhost"))
 
     # Text output of connection status
-    if (is.null(con)) output$db_status <- shiny::renderText({"No DB"})
-    else output$db_status <- shiny::renderText({"DB"})
+    output$db_status <- shiny::renderText({summary(con)})
 
-    # Write csv-file to database
-    shiny::observeEvent(r$ts_upload$upload, {
-      if (!is.null(con) & length(r$ts_upload$upload) >= 1) {
-        print(paste("Upload:", basename(r$ts_upload$upload)))
-        for (path in r$ts_upload$upload) {
-          DBI::dbWriteTable(conn = con,
-                            name = tools::file_path_sans_ext(names(which(
-                              r$ts_upload$upload == path))),
-                            value = utils::read.csv(r$ts_upload$upload),
-                            overwrite = TRUE)
-          r$ts_upload$upload = r$ts_upload$upload[!r$ts_upload$upload == path]
-        }
-        output$db_tables <- renderText(DBI::dbListTables(con))
-      }
-      print(paste("Upload:", basename(r$ts_upload$upload)))
+    # # Write csv-file to database
+    # shiny::observeEvent(r$ts_upload$upload, {
+    #   if (!is.null(con) & length(r$ts_upload$upload) >= 1) {
+    #     print(paste("Upload:", basename(r$ts_upload$upload)))
+    #     for (path in r$ts_upload$upload) {
+    #       DBI::dbWriteTable(conn = con,
+    #                         name = tools::file_path_sans_ext(names(which(
+    #                           r$ts_upload$upload == path))),
+    #                         value = utils::read.csv(r$ts_upload$upload),
+    #                         overwrite = TRUE)
+    #       r$ts_upload$upload = r$ts_upload$upload[!r$ts_upload$upload == path]
+    #     }
+    #     output$db_tables <- renderText(DBI::dbListTables(con))
+    #   }
+    #   print(paste("Upload:", basename(r$ts_upload$upload)))
+    # })
+
+    # Cleanup routine
+    cancel.onSessionEnded <- session$onSessionEnded(function() {
+      DBI::dbDisconnect(con)
     })
-
-
   })
 }
 

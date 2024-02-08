@@ -10,6 +10,7 @@
 #' @importFrom DBI dbCanConnect dbConnect
 #' @importFrom RPostgres Postgres
 #' @importFrom stats setNames
+#' @importFrom RSQLite SQLite
 
 connect_db = function(hosts) {
 
@@ -44,7 +45,6 @@ connect_db = function(hosts) {
     }
   }
 
-  # If no connection has been established return NULL
-  return(con = NULL)
-
+  # Otherwwise return sqlite con
+  return(DBI::dbConnect(RSQLite::SQLite(), "inst/db.sqlite"))
 }
