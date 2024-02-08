@@ -46,5 +46,5 @@ connect_db = function(hosts) {
   }
 
   # Otherwwise return sqlite con
-  return(DBI::dbConnect(RSQLite::SQLite(), "inst/extdata/db.sqlite"))
+  return(DBI::dbConnect(RSQLite::SQLite(), system.file("extdata", "sqlite.db", package = "PCApp")))
 }
