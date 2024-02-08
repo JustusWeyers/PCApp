@@ -46,5 +46,5 @@ connect_db = function(hosts) {
   }
 
   # Otherwwise return sqlite con
-  return(DBI::dbConnect(RSQLite::SQLite(), "inst/db.sqlite"))
+  return(DBI::dbConnect(RSQLite::SQLite(), "db.sqlite"))
 }
