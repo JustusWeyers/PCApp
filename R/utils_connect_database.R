@@ -45,11 +45,9 @@ connect_db = function(hosts) {
     }
   }
 
-  # Fetch path of extdata
+  # Set path of extdata
   extdata_path = file.path(system.file(package = "PCApp"), "extdata")
-  # Does extdata exist?
-  extdata_check = system.file("extdata", package = "PCApp")
-  if (extdata_check == '') {
+  if (!dir.exists(extdata_path)) {
     dir.create(extdata_path, showWarnings = FALSE)
   }
   # If no db has been connected return sqlite con
