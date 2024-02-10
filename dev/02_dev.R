@@ -28,9 +28,11 @@ golem::add_module(name = "settings_tab" ) # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
+golem::add_fct("connect_database")
+
 golem::add_utils("connect_database")
 golem::add_utils("render_sidebar")
-
+golem::add_utils("helpers")
 
 ## External resources
 ## Creates .js and .css files at inst/app/www
@@ -41,9 +43,12 @@ golem::add_sass_file("custom")
 
 ## Add internal datasets ----
 ## If you have data in your package
+
+# Language
 apptextfiles = list.files(pattern="\\.csv$", path = "inst/app/language/")
 apptext = lapply(file.path("inst/app/language/",apptextfiles), \(x) read.csv(x, header = FALSE)[,1])
 names(apptext) = tools::file_path_sans_ext(apptextfiles)
+
 usethis::use_data(apptext, internal = TRUE, overwrite = TRUE)
 
 # Tests ----
