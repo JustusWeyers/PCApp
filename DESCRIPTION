@@ -16,7 +16,6 @@ Imports:
     RSQLite,
     shiny (>= 1.8.0),
     shinydashboard,
-    stats,
     utils
 Suggests: 
     spelling,
