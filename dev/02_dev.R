@@ -22,9 +22,9 @@ attachment::att_amend_desc()
 
 ## Add modules ----
 ## Create a module infrastructure in R/
-golem::add_module(name = "database" ) # Name of the module
-golem::add_module(name = "ts_upload" ) # Name of the module
-golem::add_module(name = "settings_tab" ) # Name of the module
+golem::add_module(name = "database") # Name of the module
+golem::add_module(name = "ts_upload") # Name of the module
+golem::add_module(name = "settings_tab") # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
@@ -32,7 +32,9 @@ golem::add_fct("connect_database")
 
 golem::add_utils("connect_database")
 golem::add_utils("render_sidebar")
-golem::add_utils("helpers")
+golem::add_utils("connect_postgres")
+golem::add_utils("connect_sqlite")
+
 
 ## External resources
 ## Creates .js and .css files at inst/app/www
@@ -45,9 +47,9 @@ golem::add_sass_file("custom")
 ## If you have data in your package
 
 # Language
-apptextfiles = list.files(pattern="\\.csv$", path = "inst/app/language/")
-apptext = lapply(file.path("inst/app/language/",apptextfiles), \(x) read.csv(x, header = FALSE)[,1])
-names(apptext) = tools::file_path_sans_ext(apptextfiles)
+apptextfiles <- list.files(pattern = "\\.csv$", path = "inst/app/language/")
+apptext <- lapply(file.path("inst/app/language/", apptextfiles), \(x) read.csv(x, header = FALSE)[, 1])
+names(apptext) <- tools::file_path_sans_ext(apptextfiles)
 
 usethis::use_data(apptext, internal = TRUE, overwrite = TRUE)
 

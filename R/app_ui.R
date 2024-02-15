@@ -9,16 +9,14 @@
 #'
 #' @noRd
 app_ui <- function(request) {
-
   shiny::tagList(
 
     # Leave this function for adding external resources
     golem_add_external_resources(),
-
     shinydashboard::dashboardPage(
 
       # Header
-      shinydashboard::dashboardHeader(title = 'PCApp'),
+      shinydashboard::dashboardHeader(title = "PCApp"),
 
       # Sidebar
       shinydashboard::dashboardSidebar(
@@ -36,11 +34,12 @@ app_ui <- function(request) {
           # Settings
           shinydashboard::tabItem(
             tabName = "settings", shiny::tabsetPanel(
-              type = 'tabs',
-              shiny::tabPanel("Placeholder 1",
-                              mod_database_ui("database_tab")
-                              # mod_ts_upload_ui("ts_upload_1")
-                              ),
+              type = "tabs",
+              shiny::tabPanel(
+                "Placeholder 1",
+                mod_database_ui("database_tab")
+                # mod_ts_upload_ui("ts_upload_1")
+              ),
               shiny::tabPanel("Placeholder 2")
             )
           )

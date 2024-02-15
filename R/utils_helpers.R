@@ -6,11 +6,9 @@
 #'
 #' @noRd
 
-create_dir = function(path) {
+create_dir <- function(path) {
   if (!dir.exists(path)) {
     dir.create(path, showWarnings = FALSE)
   }
   return(path)
 }
-
-

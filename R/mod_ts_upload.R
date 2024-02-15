@@ -7,7 +7,9 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList tableOutput fileInput
-mod_ts_upload_ui <- function(id){
+#' @importFrom stats setNames
+#'
+mod_ts_upload_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
     col_12(
@@ -22,15 +24,13 @@ mod_ts_upload_ui <- function(id){
 #' @importFrom shiny moduleServer observeEvent
 #'
 #' @noRd
-mod_ts_upload_server <- function(id, r){
-  shiny::moduleServer(id, function(input, output, session){
+mod_ts_upload_server <- function(id, r) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     shiny::observeEvent(input$upload, {
       r$ts_upload$upload <- setNames(input$upload$datapath, input$upload$name)
     })
-
-
   })
 }
 
