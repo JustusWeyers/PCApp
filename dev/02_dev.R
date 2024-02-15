@@ -50,7 +50,6 @@ golem::add_sass_file("custom")
 apptextfiles <- list.files(pattern = "\\.csv$", path = "inst/app/language/")
 apptext <- lapply(file.path("inst/app/language/", apptextfiles), \(x) read.csv(x, header = FALSE)[, 1])
 names(apptext) <- tools::file_path_sans_ext(apptextfiles)
-
 usethis::use_data(apptext, internal = TRUE, overwrite = TRUE)
 
 # Tests ----

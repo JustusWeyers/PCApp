@@ -6,33 +6,33 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList fluidPage uiOutput fluidRow
+#' @importFrom shiny NS tabPanel uiOutput  tagList fluidPage fluidRow htmlOutput
 
 mod_database_ui <- function(id) {
   ns <- shiny::NS(id)
-  shiny::tagList(
-    shiny::fluidPage(
-      # Header
-      shiny::uiOutput(ns("ui_header")),
-      # Body
-      shiny::fluidRow(
-        col_10(
-          shiny::uiOutput(ns("ui_dbtype_radiobutton")),
-          col_6(
-            shiny::uiOutput(ns("ui_host_textinput")),
-            shiny::uiOutput(ns("ui_port_textinput")),
-            shiny::uiOutput(ns("ui_user_textinput"))
+
+  shiny::tabPanel(
+    shiny::uiOutput(ns("ui_tab_title")),
+    shiny::tagList(
+      shiny::fluidPage(
+        # Header 1
+        shiny::uiOutput(ns("ui_header1")),
+        # Body
+        shiny::fluidRow(
+          col_10(
+            shiny::uiOutput(ns("ui_connection_box")),
           ),
-          col_6(
-            shiny::uiOutput(ns("ui_password_textinput")),
-            shiny::uiOutput(ns("ui_dbname_textinput"))
+          col_2(
+            shiny::htmlOutput(ns("db_logo"))
           )
         ),
-        col_2(
-          shiny::htmlOutput(ns("db_logo"))
-        )
-      ),
-      shiny::uiOutput(ns("ui_connect_actionbutton"))
+        # Header 2
+        shiny::uiOutput(ns("ui_header2")),
+        shiny::fluidRow(),
+        # Header 3
+        shiny::uiOutput(ns("ui_header3")),
+        shiny::fluidRow()
+      )
     )
   )
 }
@@ -46,8 +46,9 @@ mod_database_ui <- function(id) {
 #' @noRd
 #'
 #' @importFrom shiny observeEvent renderUI textInput actionButton reactive
-#' @importFrom shiny reactiveValues
+#' @importFrom shiny reactiveValues img tabPanel fluidRow uiOutput titlePanel
 #' @importFrom shinyThings radioSwitchButtons
+#' @importFrom shinydashboard tabBox
 #' @importFrom DBI dbDisconnect
 #' @importFrom stats setNames
 
@@ -69,7 +70,7 @@ mod_database_server <- function(id, r, txt) {
     server = shiny::reactiveValues(
       # Supported database types
       database_types = c("RPostgres", "RSQLite"),
-      # Connection in spe
+      # Connection
       con = connect_database(
         type = "RPostgres",
         host = getElement(default_database_access, "host"),
@@ -80,38 +81,55 @@ mod_database_server <- function(id, r, txt) {
       )
     )
 
-    # Connect to database
-    shiny::observeEvent(input$connect, {
+    # Connect to database functionality
+    shiny::observeEvent(input$dbtype, {
+
       # At first disconnect
       DBI::dbDisconnect(server$con)
 
       # Then reconnect
-      server$con = connect_database(
-        type = input$dbtype,
-        host = input$host,
-        port = input$port,
-        user = input$user,
-        dbname = input$dbname,
-        password = input$password
-      )
+      if (shiny::isTruthy(input$host)) {
+        server$con = connect_database(
+          type = input$dbtype,
+          host = input$host,
+          port = input$port,
+          user = input$user,
+          dbname = input$dbname,
+          password = input$password
+        )
+      } else {
+        server$con = connect_database(
+          type = input$dbtype,
+          host = getElement(default_database_access, "host"),
+          port = getElement(default_database_access, "port"),
+          user = getElement(default_database_access, "user"),
+          dbname = getElement(default_database_access, "dbname"),
+          password = getElement(default_database_access, "password")
+        )
+      }
     })
 
     ### UI Elements
+
+    # Tab title
+    output$ui_tab_title <- shiny::renderUI({
+      shiny::renderText(txt[2])
+    })
+
+    # Header 1
+    output$ui_header1 <- shiny::renderUI({
+      shiny::titlePanel(txt[11])
+    })
 
     # Database system radiobuttons
     output$ui_dbtype_radiobutton <- shiny::renderUI(
       shinyThings::radioSwitchButtons(
         ns("dbtype"),
-        label = txt[14],
+        label = NULL,
         choices = server$database_types,
         selected = attr(class(server$con), "package")
       )
     )
-
-    # Header
-    output$ui_header <- shiny::renderUI({
-      shiny::titlePanel(txt[11])
-    })
 
     # Host text input
     output$ui_host_textinput <- shiny::renderUI(
@@ -143,15 +161,44 @@ mod_database_server <- function(id, r, txt) {
                          value = default_database_access["dbname"])
     )
 
-    # Connect actionbutton
-    output$ui_connect_actionbutton <- shiny::renderUI(
-      shiny::actionButton(ns("connect"), txt[10])
+    # Connection tabbox
+    output$ui_connection_box <- shiny::renderUI(shinydashboard::tabBox(
+        id = ns("mytabbox"), title = "", width = "100%",
+        shiny::tabPanel(
+          txt[14],
+          shiny::uiOutput(ns("ui_dbtype_radiobutton"))
+        ),
+        shiny::tabPanel(
+          txt[15],
+          shiny::fluidRow(
+            col_6(
+              shiny::uiOutput(ns("ui_host_textinput")),
+              shiny::uiOutput(ns("ui_port_textinput")),
+              shiny::uiOutput(ns("ui_user_textinput"))
+            ),
+            col_6(
+              shiny::uiOutput(ns("ui_password_textinput")),
+              shiny::uiOutput(ns("ui_dbname_textinput"))
+            )
+          )
+        )
+      )
     )
 
     # Database logo
     output$db_logo <- shiny::renderUI({
       path = paste0('www/', attr(class(server$con), "package"), '.svg')
-      return(img(src = path, width = "100%"))
+      return(shiny::img(src = path, width = "100%"))
+    })
+
+    # Header 2
+    output$ui_header2 <- shiny::renderUI({
+      shiny::titlePanel(txt[16])
+    })
+
+    # Header 3
+    output$ui_header3 <- shiny::renderUI({
+      shiny::titlePanel(txt[17])
     })
 
     ### Cleanup routine
