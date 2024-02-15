@@ -13,11 +13,13 @@
 #' @noRd
 #'
 #' @importFrom DBI dbCanConnect dbConnect
-#' @importFrom RSQLite SQLite
+#' @importFrom RPostgres Postgres
 
 connect_postgres <- function(host, user, password, port, dbname) {
+
   # Check if connection to database is possible
-  con_check <- DBI::dbCanConnect(RPostgres::Postgres(),
+  con_check <- DBI::dbCanConnect(
+    RPostgres::Postgres(),
     user = user,
     password = password,
     host = host,
@@ -27,19 +29,29 @@ connect_postgres <- function(host, user, password, port, dbname) {
 
   # If connection to database is possible connect and return con
   if (con_check == TRUE) {
-    con <- DBI::dbConnect(RPostgres::Postgres(),
-      user = user,
+    con <- DBI::dbConnect(
+      RPostgres::Postgres(),
+      user = "user",#user,
       password = password,
       host = host,
       port = port,
-      dbname = dbname
+      dbname = "mydb"#dbname
     )
 
     # Return connection object
     return(con)
   }
-  # Otherwise return NA
+  # Otherwise return NULL
   else {
-    return(NA)
+   return(NULL)
   }
 }
+
+# Test
+# test_con = connect_postgres(
+#   host = "localhost",
+#   user = "user",
+#   password = "mysecretpassword",
+#   port = "5432",
+#   db = "mydb"
+# )

@@ -1,0 +1,3 @@
+RPostgres.svg: https://de.wikipedia.org/wiki/PostgreSQL
+RSQLite.svg: https://de.wikipedia.org/wiki/SQLite
+(15.02.2024)

@@ -13,15 +13,13 @@
 #'
 #' @noRd
 
-connect_database <- function(type, host = NA, user = "user",
-                             password = "mysecretpassword",
-                             port = "5432", dbname = "mydb") {
+connect_database <- function(type, host, user, password, port, dbname) {
 
   # The futur connection object
-  con = NA
+  con = NULL
 
   # Eventually try Postgres connection
-  if (type == "PostgreSQL") {
+  if (type == "RPostgres") {
     con <- connect_postgres(
       host = host, port = port, user = user,
       dbname = dbname, password = password
@@ -29,7 +27,7 @@ connect_database <- function(type, host = NA, user = "user",
   }
 
   # Eventually try sqlite connetion
-  if (type == "SQLite" | is.na(con)) {
+  if (type == "RSQLite" | is.null(con)) {
     con <- connect_sqlite(
       host = host, port = port, user = user,
       dbname = dbname, password = password

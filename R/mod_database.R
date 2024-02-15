@@ -16,7 +16,9 @@ mod_database_ui <- function(id) {
   shiny::tagList(
     col_6(
       shiny::h1(),
+      shiny::htmlOutput(ns("db_logo")),
       shiny::uiOutput(ns("ui_dbtype_radiobutton")),
+      shiny::uiOutput(ns("ui_connect_actionbutton")),
       shiny::verbatimTextOutput(ns("db_status")),
       shiny::uiOutput(ns("ui_host_textinput")),
       shiny::uiOutput(ns("ui_port_textinput")),
@@ -44,90 +46,108 @@ mod_database_server <- function(id, r, txt) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Constants
-    database_types <- c("PostgreSQL", "SQLite")
+    ### Constants
+
+    # Default database access (sys?)
+    default_database_access = stats::setNames(
+      c("localhost", "user", "mysecretpassword", "5432", "mydb"),
+      c("host", "user", "password", "port", "dbname")
+    )
+
+    ### Serverlogic
+
+    # Module servers global variables
+    server = shiny::reactiveValues(
+      # Supported database types
+      database_types = c("RPostgres", "RSQLite"),
+      # Connection in spe
+      con = connect_database(
+        type = "RPostgres",
+        host = getElement(default_database_access, "host"),
+        port = getElement(default_database_access, "port"),
+        user = getElement(default_database_access, "user"),
+        dbname = getElement(default_database_access, "dbname"),
+        password = getElement(default_database_access, "password")
+      )
+    )
 
     # Connect to database
-    shiny::observeEvent(input$dbtype, {
-      if (!exists("con")) {
-        # Just connect
-        con <- connect_database(
-          type <- input$dbtype,
-          host <- input$host,
-          port <- input$port,
-          user <- input$user,
-          dbname <- input$dbname,
-          password <- input$password
-        )
-      } else {
-        # Disconnect and reconnect
-        print("Disc")
-        DBI::dbDisconnect(con())
-        con <- connect_database(
-          type <- input$dbtype,
-          host <- input$host,
-          port <- input$port,
-          user <- input$user,
-          dbname <- input$dbname,
-          password <- input$password
-        )
-      }
-      print(class(con))
-    })
+    observeEvent(input$connect, {
+      # At first disconnect
+      DBI::dbDisconnect(server$con)
 
-
-    ### Trash code
-    # # Write csv-file to database
-    # shiny::observeEvent(r$ts_upload$upload, {
-    #   if (!is.null(con) & length(r$ts_upload$upload) ><- 1) {
-    #     print(paste("Upload:", basename(r$ts_upload$upload)))
-    #     for (path in r$ts_upload$upload) {
-    #       DBI::dbWriteTable(conn <- con,
-    #                         name <- tools::file_path_sans_ext(names(which(
-    #                           r$ts_upload$upload <-<- path))),
-    #                         value <- utils::read.csv(r$ts_upload$upload),
-    #                         overwrite <- TRUE)
-    #       r$ts_upload$upload <- r$ts_upload$upload[!r$ts_upload$upload <-<- path]
-    #     }
-    #     output$db_tables <- renderText(DBI::dbListTables(con))
-    #   }
-    #   print(paste("Upload:", basename(r$ts_upload$upload)))
-    # })
-
-    ### Render UI Elements
-
-    # Text output of connection status
-    # output$db_status <- shiny::renderText({summary(con())})
-
-    # Database access parameters
-    output$ui_dbtype_radiobutton <- shiny::renderUI({
-      shinyThings::radioSwitchButtons(
-        ns("dbtype"),
-        label <- txt[2],
-        choices <- database_types,
-        selected <- database_types[2]
+      # Then reconnect
+      server$con = connect_database(
+        type = input$dbtype,
+        host = input$host,
+        port = input$port,
+        user = input$user,
+        dbname = input$dbname,
+        password = input$password
       )
     })
-    output$ui_host_textinput <- shiny::renderUI({
-      shiny::textInput(ns("host"), label <- txt[9], value <- "localhost")
+
+    ### UI Elements
+
+    # Text output of connection status
+    output$db_status <- shiny::renderText({
+      summary(server$con)
     })
-    output$ui_port_textinput <- shiny::renderUI({
-      shiny::textInput(ns("port"), label <- txt[8], value <- "5432")
-    })
-    output$ui_user_textinput <- shiny::renderUI({
-      shiny::textInput(ns("user"), label <- txt[6], value <- "user")
-    })
-    output$ui_password_textinput <- shiny::renderUI({
-      shiny::textInput(ns("password"), label <- txt[7], value <- "mysecretpassword")
-    })
-    output$ui_dbname_textinput <- shiny::renderUI({
-      shiny::textInput(ns("dbname"), label <- txt[2], value <- "mydb")
+
+
+    # Database access parameters
+    output$ui_dbtype_radiobutton <- shiny::renderUI(
+      shinyThings::radioSwitchButtons(
+        ns("dbtype"),
+        label = txt[2],
+        choices = server$database_types,
+        selected = attr(class(server$con), "package")
+      )
+    )
+
+    output$ui_connect_actionbutton <-
+      shiny::renderUI(shiny::actionButton(ns("connect"), txt[10]))
+
+    output$ui_host_textinput <-
+      shiny::renderUI({
+        shiny::textInput(ns("host"),
+                         label = txt[9],
+                         value = default_database_access["host"])
+      })
+    output$ui_port_textinput <-
+      shiny::renderUI({
+        shiny::textInput(ns("port"),
+                         label = txt[8],
+                         value = default_database_access["port"])
+      })
+    output$ui_user_textinput <-
+      shiny::renderUI({
+        shiny::textInput(ns("user"),
+                         label = txt[6],
+                         value = default_database_access["user"])
+      })
+    output$ui_password_textinput <-
+      shiny::renderUI({
+        shiny::textInput(ns("password"),
+                         label = txt[7],
+                         value = default_database_access["password"])
+      })
+    output$ui_dbname_textinput <-
+      shiny::renderUI({
+        shiny::textInput(ns("dbname"),
+                         label = txt[2],
+                         value = default_database_access["dbname"])
+      })
+
+    output$db_logo <- shiny::renderUI({
+      path = paste0('www/', attr(class(server$con), "package"), '.svg')
+      img(src = path, height = 50)
     })
 
     # Cleanup routine
-    # cancel.onSessionEnded <- session$onSessionEnded(function() {
-    #   DBI::dbDisconnect(con())
-    # })
+    cancel.onSessionEnded <- session$onSessionEnded(function() {
+      shiny::reactive(DBI::dbDisconnect(con()))
+    })
   })
 }
 
