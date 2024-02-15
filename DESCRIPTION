@@ -17,8 +17,7 @@ Imports:
     shiny (>= 1.8.0),
     shinydashboard,
     shinyThings,
-    stats,
-    utils
+    stats
 Suggests: 
     spelling,
     testthat (>= 3.0.0)

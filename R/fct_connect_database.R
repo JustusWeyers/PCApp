@@ -1,6 +1,6 @@
 #' fct_connect_database
 #'
-#' @description Master function in the matter of connecting to a specific databyse type specified in type parameter
+#' @description Master function to connect specific database type
 #'
 #' @param type Prefered databasetype. "PostgreSQL" or "SQLite".
 #' @param host host name
@@ -28,10 +28,7 @@ connect_database <- function(type, host, user, password, port, dbname) {
 
   # Eventually try sqlite connetion
   if (type == "RSQLite" | is.null(con)) {
-    con <- connect_sqlite(
-      host = host, port = port, user = user,
-      dbname = dbname, password = password
-    )
+    con <- connect_sqlite()
   }
 
   return(con)

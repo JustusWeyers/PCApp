@@ -8,3 +8,7 @@ Password
 Port
 Host
 Connect
+Database-connection
+No database connected
+Connection to database failed
+Database system

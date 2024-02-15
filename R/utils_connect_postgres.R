@@ -1,6 +1,6 @@
 #' utils_connect_postgres
 #'
-#' @description Check availability and correspondingly connect to PostgreSQL/sqlite DB
+#' @description Check availability and possibly connect to PostgreSQL/SQLite DB
 #'
 #' @param host host name of PostgreSQL database to connect.
 #' @param port database port
@@ -46,12 +46,3 @@ connect_postgres <- function(host, user, password, port, dbname) {
    return(NULL)
   }
 }
-
-# Test
-# test_con = connect_postgres(
-#   host = "localhost",
-#   user = "user",
-#   password = "mysecretpassword",
-#   port = "5432",
-#   db = "mydb"
-# )

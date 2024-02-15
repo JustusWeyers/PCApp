@@ -16,7 +16,7 @@ You can install the development version of PCApp via GitHub:
 # 1. Install remotes
 utils::install.packages("remotes")
 # 2. Install PCApp from GitHub
-remotes::install_github("https://github.com/JustusWeyers/PCApp.git")
+remotes::install_github("JustusWeyers/PCApp")
 ```
 
 ## Run Application
