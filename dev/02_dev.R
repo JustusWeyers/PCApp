@@ -28,7 +28,7 @@ golem::add_module(name = "settings_tab") # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
-golem::add_fct("connect_database")
+golem::add_fct("database")
 
 golem::add_utils("connect_database")
 golem::add_utils("render_sidebar")

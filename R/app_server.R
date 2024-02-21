@@ -9,6 +9,8 @@
 app_server <- function(input, output, session) {
   # Application server logic
 
+  # print(Sys.getenv())
+
   # Global reactive values
   r <- shiny::reactiveValues()
 

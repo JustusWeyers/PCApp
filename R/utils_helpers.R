@@ -12,4 +12,3 @@ create_dir <- function(path) {
   }
   return(path)
 }
-

@@ -11,6 +11,7 @@ Imports:
     config (>= 0.3.2),
     DBI,
     golem (>= 0.4.1),
+    methods,
     purrr,
     RPostgres,
     RSQLite,
