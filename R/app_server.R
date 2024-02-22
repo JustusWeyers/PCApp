@@ -2,17 +2,18 @@
 #'
 #' @param input,output,session Internal parameters for {shiny}.
 #'
-#' @import shiny
+#' @rawNamespace import(shiny, except = renderDataTable)
 #' @importFrom golem get_golem_options
 #' @noRd
 
 app_server <- function(input, output, session) {
   # Application server logic
 
-  # print(Sys.getenv())
-
   # Global reactive values
   r <- shiny::reactiveValues()
+
+  # Environment
+  r$ENV = Sys.getenv()
 
   # Fetch application language
   lang <- golem::get_golem_options("lang")
@@ -28,5 +29,6 @@ app_server <- function(input, output, session) {
   output$sidebarmenu <- render_sidebar(apptext = txt[1])
 
   # Modular code
+  mod_ENV_server("ENV_1")
   mod_database_server("database_tab", r, txt)
 }

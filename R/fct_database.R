@@ -19,7 +19,8 @@ setClass("Database",
            password = "character",
            dbname = "character",
 
-           users = "data.frame"
+           users = "data.frame",
+           tables = "data.frame"
          ),
          prototype = list(
            host = NA_character_,
@@ -87,7 +88,7 @@ setMethod("connect.database",
 
 # # Get database information
 
-# Get user
+# Get users
 
 setGeneric("database.users", function(d) standardGeneric("database.users"))
 
@@ -105,6 +106,27 @@ setMethod("database.users",
             return(d@users)
           })
 
+# Get tables
+
+setGeneric("database.tables", function(d) standardGeneric("database.tables"))
+
+setMethod("database.tables",
+          signature(d = "PostgreSQL"),
+          function(d) {
+            sql <- r"(SELECT * FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_schema NOT LIKE 'pg_toast%')"
+            d@tables <- DBI::dbGetQuery(d@con, sql)
+            return(d@tables)
+          })
+
+setMethod("database.tables",
+          signature(d = "SQLite"),
+          function(d) {
+            sql <- r"(SELECT * FROM sqlite_temp_master WHERE type='table';)"
+            d@tables <- DBI::dbGetQuery(d@con, sql)
+            return(d@tables)
+          })
+
+
 # Create user
 
 setGeneric("create.user", function(d, newUser, password) standardGeneric("create.user"))
@@ -112,10 +134,9 @@ setGeneric("create.user", function(d, newUser, password) standardGeneric("create
 setMethod("create.user",
           signature(d = "PostgreSQL"),
           function(d, newUser, password) {
+            print("Create User")
             sql = paste0(r"(CREATE USER )", newUser, r"( WITH PASSWORD ')", password, r"(';)")
-            if (length(d@users$usename) >= 1  & !(newUser %in% d@users$usename)) {
-              DBI::dbExecute(d@con, sql)
-            }
+            DBI::dbExecute(d@con, sql)
           }
 )
 
@@ -123,5 +144,3 @@ setMethod("create.user",
           signature(d = "SQLite"),
           function(d, newUser, password){}
           )
-
-

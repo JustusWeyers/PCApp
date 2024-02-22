@@ -7,6 +7,7 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tabPanel uiOutput  tagList fluidPage fluidRow htmlOutput
+#' @importFrom DT renderDataTable
 
 mod_database_ui <- function(id) {
   ns <- shiny::NS(id)
@@ -62,15 +63,90 @@ mod_database_server <- function(id, r, txt) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    ### Constants
-
-    # Default database access (sys?)
+    # Superuser database access
     default_database_access = stats::setNames(
-      c("localhost", "user", "mysecretpassword", "5432", "mydb"),
-      c("host", "user", "password", "port", "dbname")
+      c("localhost", "user", "user", "mysecretpassword", "mysecretpassword", "5432", "mydb"),
+      c("host", "superuser", "user", "superpassword", "password", "port", "dbname")
     )
 
     ### Functions
+
+    # Get credentials from environment
+
+    ENVcredentials = function(ENV = isolate(r$ENV), default_acc = default_database_access) {
+
+      # At first take over default values
+      auth = c(default_acc)
+
+      # Check if alternatively host is available from env
+      if ("DBIP" %in% names(ENV)) {
+        auth["host"] <- getElement(ENV, "DBIP")
+      }
+
+      # Check if alternatively username is available from env
+      if ("SHINYPROXY_USERNAME" %in% names(ENV)) {
+        auth["user"] <- getElement(ENV, "SHINYPROXY_USERNAME")
+
+      } else if ("USERNAME" %in% names(ENV)) {
+        auth["user"] <- getElement(ENV, "USERNAME")
+      }
+
+      # Check if alternatively password is available from env
+      if (paste0(auth["user"], "_db_password") %in% names(ENV)) {
+        auth["password"] <- getElement(ENV, paste0(auth["user"], "_db_password"))
+      }
+
+      return(auth)
+    }
+
+    # Test initially connection to postgres
+
+    init_connect = function(dbms, access) {
+
+      if (dbms == "RPostgres") {
+        # tryCatch({
+
+          print(access)
+
+          # Connect as superuser
+          db = connect.database(new("PostgreSQL",
+                               host = getElement(access, "host"),
+                               port = getElement(access, "port"),
+                               user = getElement(access, "superuser"),
+                               password = getElement(access, "superpassword"),
+                               dbname = getElement(access, "dbname")))
+
+          user = getElement(access, "user")
+          password = getElement(access, "password")
+
+          # Eventually create new user
+          if (!(user %in% database.users(db)$usename)) {
+            create.user(db, newUser = user, password = password)
+          }
+
+          # Then disconnect
+          DBI::dbDisconnect(db@con)
+
+          print("Disco")
+
+          # And reconnect
+          db = connect.database(new("PostgreSQL",
+                                    host = getElement(access, "host"),
+                                    port = getElement(access, "port"),
+                                    user = getElement(access, "user"),
+                                    password = getElement(access, "password"),
+                                    dbname = getElement(access, "dbname")))
+
+          return(db)
+
+        #   },
+        # error = function(e) {
+        #   return(connect.database(new("SQLite")))
+        # })
+      } else {
+        return(connect.database(new("SQLite")))
+      }
+    }
 
     connect = function(dbms, access) {
 
@@ -96,32 +172,35 @@ mod_database_server <- function(id, r, txt) {
 
     # Module servers global variables
     server = shiny::reactiveValues(
+
       # Supported database types
       database_types = stats::setNames(c("RPostgres", "RSQLite"),
                                        c("PostgreSQL", "SQLite")),
 
-      # Initially try Postgres connection
-      db = connect(dbms = "RPostgres", access = default_database_access)
+      database_access = ENVcredentials(),
+
+      # Initially try Postgres connection as superuser
+      db = init_connect(dbms = "RPostgres", access = ENVcredentials())
+
     )
 
     # Connect to database functionality
     shiny::observeEvent(input$dbtype, {
-
-      # At first disconnect
-      DBI::dbDisconnect(server$db@con)
 
       # Eventually fetch user defined database access parameters
       if (all(shiny::isTruthy(c(input$host, input$user, input$password, input$port, input$dbname)))) {
         acc = stats::setNames(c(input$host, input$user, input$password, input$port, input$dbname),
                               c("host", "user", "password", "port", "dbname"))
       } else {
-        acc = default_database_access
+        acc = ENVcredentials()
       }
+
+      # At first disconnect
+      DBI::dbDisconnect(server$db@con)
 
       # Connect selected database type
       server$db = connect(dbms = input$dbtype, access = acc)
 
-      create.user(server$db, newUser = "newbie", password = "1234")
     })
 
     ### UI Elements
@@ -150,31 +229,31 @@ mod_database_server <- function(id, r, txt) {
     # Host text input
     output$ui_host_textinput <- shiny::renderUI(
         shiny::textInput(ns("host"), label = txt[9],
-                         value = default_database_access["host"])
+                         value = getElement(server$database_access, "host"))
     )
 
     # Port text input
     output$ui_port_textinput <- shiny::renderUI(
         shiny::textInput(ns("port"), label = txt[8],
-                         value = default_database_access["port"])
+                         value = getElement(server$database_access, "port"))
     )
 
     # User text input
     output$ui_user_textinput <- shiny::renderUI(
         shiny::textInput(ns("user"), label = txt[6],
-                         value = default_database_access["user"])
+                         value = getElement(server$database_access, "user"))
     )
 
     # Password text input
     output$ui_password_textinput <- shiny::renderUI(
-        shiny::textInput(ns("password"), label = txt[7],
-                         value = default_database_access["password"])
+        shiny::passwordInput(ns("password"), label = txt[7],
+                             value = getElement(server$database_access, "password"))
     )
 
     # Database name text input
     output$ui_dbname_textinput <- shiny::renderUI(
         shiny::textInput(ns("dbname"), label = txt[2],
-                         value = default_database_access["dbname"])
+                         value = getElement(server$database_access, "dbname"))
     )
 
     # Connection tabbox
@@ -214,17 +293,31 @@ mod_database_server <- function(id, r, txt) {
 
     # Table of database users
     output$ui_users <- shiny::renderUI({
-      shiny::renderTable(database.users(server$db), bordered = TRUE)
+      # shiny::renderTable(database.users(server$db), bordered = TRUE)
+      DT::renderDataTable(database.users(server$db))
     })
+
+    # Table of database tables
+    output$ui_tables <- shiny::renderUI({
+      # shiny::renderTable(database.tables(server$db), bordered = TRUE)
+      DT::renderDataTable(database.tables(server$db), options = list(scrollX = TRUE))
+    })
+
 
     # Tabbox for database properties
     output$ui_properties_tabbox <- shiny::renderUI(
       shinydashboard::tabBox(
         id = ns("properties_tabbox"), title = "", width = "100%",
         shiny::tabPanel(
+          # style="max-height: 200px; overflow-x: scroll; overflow-y: scroll",
           txt[21],
           shiny::uiOutput(ns("ui_users"))
-        )
+        ),
+        shiny::tabPanel(
+          # style="max-height: 200px; overflow-x: scroll; overflow-y: scroll",
+          txt[23],
+          shiny::uiOutput(ns("ui_tables"))
+          )
       )
     )
 

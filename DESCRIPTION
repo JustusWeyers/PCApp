@@ -10,6 +10,7 @@ Depends:
 Imports: 
     config (>= 0.3.2),
     DBI,
+    DT,
     golem (>= 0.4.1),
     methods,
     purrr,

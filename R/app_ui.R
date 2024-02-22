@@ -37,7 +37,7 @@ app_ui <- function(request) {
               type = "tabs",
               mod_database_ui("database_tab"),
               # mod_ts_upload_ui("ts_upload_1")
-              shiny::tabPanel("Placeholder")
+              mod_ENV_ui("ENV_1")
             )
           )
         )
