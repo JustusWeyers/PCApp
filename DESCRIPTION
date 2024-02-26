@@ -18,8 +18,7 @@ Imports:
     RSQLite,
     shiny (>= 1.8.0),
     shinydashboard,
-    shinyThings,
-    stats
+    shinyThings
 Suggests: 
     spelling,
     testthat (>= 3.0.0)

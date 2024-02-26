@@ -28,6 +28,15 @@ app_ui <- function(request) {
         shinydashboard::tabItems(
 
           # Import
+          shinydashboard::tabItem(
+            tabName = "import", shiny::tabsetPanel(
+              type = "tabs",
+              mod_upload_timeseries_ui("upload_timeseries"),
+              mod_upload_metadata_ui("upload_metadata"),
+              mod_upload_shapefile_ui("upload_shapefile"),
+              mod_upload_raster_ui("upload_raster")
+            )
+          ),
 
           # Analysis
 
@@ -36,7 +45,6 @@ app_ui <- function(request) {
             tabName = "settings", shiny::tabsetPanel(
               type = "tabs",
               mod_database_ui("database_tab"),
-              # mod_ts_upload_ui("ts_upload_1")
               mod_ENV_ui("ENV_1")
             )
           )

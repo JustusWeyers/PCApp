@@ -24,8 +24,10 @@ attachment::att_amend_desc()
 ## Create a module infrastructure in R/
 golem::add_module(name = "database") # Name of the module
 golem::add_module(name = "ENV") # Name of the module
-
-golem::add_module(name = "ts_upload") # Name of the module
+golem::add_module(name = "upload_timeseries") # Name of the module
+golem::add_module(name = "upload_metadata") # Name of the module
+golem::add_module(name = "upload_shapefile") # Name of the module
+golem::add_module(name = "upload_raster") # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*

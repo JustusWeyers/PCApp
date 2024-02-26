@@ -1,11 +1,13 @@
 #' database
 #'
-#' @description A fct function
+#' @description Classes and Methods for S4 database management
 #'
-#' @return The return value, if any, from executing the function.
+#' @return Several things
 #'
 #' @importFrom RPostgres Postgres
 #' @importFrom RSQLite SQLite
+#' @importFrom DBI dbCanConnect dbConnect dbGetQuery dbExecute
+#' @importFrom methods signature
 #'
 #' @noRd
 
@@ -43,14 +45,66 @@ setClass("SQLite",
            con = "SQLiteConnection"
          ))
 
-# Generics
+setClass("Data",
+         slots = c(
+           name = "character",
+           size = "character",
+           path = "character"
+         ),
+         prototype = list(
+           name = NA_character_,
+           size = NA_character_,
+           path = NA_character_
+         ))
+
+setClass("Timeseries",
+         contains = "Data",
+         slots = c(
+           nrow = "character"
+         ),
+         prototype = list(
+           nrow = NA_character_
+         )
+)
+
+setClass("GeoSpatialData",
+         contains = "Data",
+         slots = c(
+           EPSG = "character"
+         ),
+         prototype = list(
+           EPSG = NA_character_
+         )
+)
+
+setClass("VectorData",
+         contains = "GeoSpatialData",
+         slots = c(
+           features = "character"
+         ),
+         prototype = list(
+           features = NA_character_
+         )
+)
+
+setClass("RasterData",
+         contains = "GeoSpatialData",
+         slot = c(
+           extent = "character"
+         ),
+         prototype = list(
+           extent = NA_character_
+         )
+)
+
+# Generics and Methods
 
 # Database connection
 
 setGeneric("connect.database", function(d) standardGeneric("connect.database"))
 
 setMethod("connect.database",
-          signature(d = "PostgreSQL"),
+          methods::signature(d = "PostgreSQL"),
           function (d) {
             # Check if connection to database is possible
             con_check <- DBI::dbCanConnect(
@@ -79,7 +133,7 @@ setMethod("connect.database",
           })
 
 setMethod("connect.database",
-          signature(d = "SQLite"),
+          methods::signature(d = "SQLite"),
           function (d) {
             extdata_path <- create_dir(file.path(system.file(package = "PCApp"), "extdata"))
             d@con <- DBI::dbConnect(RSQLite::SQLite(), file.path(extdata_path, "sqlite.db"))
@@ -93,7 +147,7 @@ setMethod("connect.database",
 setGeneric("database.users", function(d) standardGeneric("database.users"))
 
 setMethod("database.users",
-          signature(d = "PostgreSQL"),
+          methods::signature(d = "PostgreSQL"),
           function(d) {
             sql <- r"(SELECT * FROM pg_catalog.pg_user;)"
             d@users <- DBI::dbGetQuery(d@con, sql)
@@ -101,7 +155,7 @@ setMethod("database.users",
           })
 
 setMethod("database.users",
-          signature(d = "SQLite"),
+          methods::signature(d = "SQLite"),
           function(d) {
             return(d@users)
           })
@@ -111,7 +165,7 @@ setMethod("database.users",
 setGeneric("database.tables", function(d) standardGeneric("database.tables"))
 
 setMethod("database.tables",
-          signature(d = "PostgreSQL"),
+          methods::signature(d = "PostgreSQL"),
           function(d) {
             sql <- r"(SELECT * FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_schema NOT LIKE 'pg_toast%')"
             d@tables <- DBI::dbGetQuery(d@con, sql)
@@ -119,7 +173,7 @@ setMethod("database.tables",
           })
 
 setMethod("database.tables",
-          signature(d = "SQLite"),
+          methods::signature(d = "SQLite"),
           function(d) {
             sql <- r"(SELECT * FROM sqlite_temp_master WHERE type='table';)"
             d@tables <- DBI::dbGetQuery(d@con, sql)
@@ -132,7 +186,7 @@ setMethod("database.tables",
 setGeneric("create.user", function(d, newUser, password) standardGeneric("create.user"))
 
 setMethod("create.user",
-          signature(d = "PostgreSQL"),
+          methods::signature(d = "PostgreSQL"),
           function(d, newUser, password) {
             print("Create User")
             sql = paste0(r"(CREATE USER )", newUser, r"( WITH PASSWORD ')", password, r"(';)")
@@ -141,6 +195,6 @@ setMethod("create.user",
 )
 
 setMethod("create.user",
-          signature(d = "SQLite"),
+          methods::signature(d = "SQLite"),
           function(d, newUser, password){}
           )

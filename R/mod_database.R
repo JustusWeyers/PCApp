@@ -51,113 +51,113 @@ mod_database_ui <- function(id) {
 #' @noRd
 #'
 #' @importFrom DBI dbDisconnect
+#' @importFrom DT renderDataTable
 #' @importFrom methods new
-#' @importFrom shiny observeEvent renderUI textInput actionButton reactive
+#' @importFrom shiny observeEvent renderUI textInput reactive
 #' @importFrom shiny reactiveValues img tabPanel fluidRow uiOutput titlePanel
-#' @importFrom shiny isTruthy renderTable
+#' @importFrom shiny isTruthy renderTable moduleServer isolate renderText
+#' @importFrom shiny passwordInput
 #' @importFrom shinyThings radioSwitchButtons
 #' @importFrom shinydashboard tabBox
-#' @importFrom stats setNames
 
 mod_database_server <- function(id, r, txt) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Superuser database access
-    default_database_access = stats::setNames(
-      c("localhost", "user", "user", "mysecretpassword", "mysecretpassword", "5432", "mydb"),
-      c("host", "superuser", "user", "superpassword", "password", "port", "dbname")
+    # Default database access values
+    default_database_access = c(
+        host = "localhost",
+        superuser = "user",
+        user = "user",
+        superpassword = "mysecretpassword",
+        password = "mysecretpassword",
+        port = "5432",
+        dbname = "mydb"
     )
 
     ### Functions
 
     # Get credentials from environment
-
-    ENVcredentials = function(ENV = isolate(r$ENV), default_acc = default_database_access) {
-
-      # At first take over default values
-      auth = c(default_acc)
+    ENVcredentials = function(ENV = shiny::isolate(r$ENV), acc = default_database_access) {
 
       # Check if alternatively host is available from env
       if ("DBIP" %in% names(ENV)) {
-        auth["host"] <- getElement(ENV, "DBIP")
+        acc["host"] <- getElement(ENV, "DBIP")
       }
 
       # Check if alternatively username is available from env
       if ("SHINYPROXY_USERNAME" %in% names(ENV)) {
-        auth["user"] <- getElement(ENV, "SHINYPROXY_USERNAME")
-
+        acc["user"] <- getElement(ENV, "SHINYPROXY_USERNAME")
       } else if ("USERNAME" %in% names(ENV)) {
-        auth["user"] <- getElement(ENV, "USERNAME")
+        acc["user"] <- getElement(ENV, "USERNAME")
       }
 
       # Check if alternatively password is available from env
-      if (paste0(auth["user"], "_db_password") %in% names(ENV)) {
-        auth["password"] <- getElement(ENV, paste0(auth["user"], "_db_password"))
+      if (paste0(acc["user"], "_db_password") %in% names(ENV)) {
+        acc["password"] <- getElement(ENV, paste0(acc["user"], "_db_password"))
       }
 
-      return(auth)
+      return(acc)
     }
 
     # Test initially connection to postgres
+    init_connect = function(access) {
 
-    init_connect = function(dbms, access) {
+      tryCatch({
 
-      if (dbms == "RPostgres") {
-        # tryCatch({
+        # Connect as superuser
+        db = connect.database(
+          new("PostgreSQL",
+            host = getElement(access, "host"),
+            port = getElement(access, "port"),
+            user = getElement(access, "superuser"),
+            password = getElement(access, "superpassword"),
+            dbname = getElement(access, "dbname")
+          )
+        )
 
-          print(access)
+        # Create new user if user does not exist
+        if (!(getElement(access, "user") %in% database.users(db)$usename)) {
+          create.user(db, newUser = getElement(access, "user"),
+                      password = getElement(access, "password"))
+        }
 
-          # Connect as superuser
-          db = connect.database(new("PostgreSQL",
-                               host = getElement(access, "host"),
-                               port = getElement(access, "port"),
-                               user = getElement(access, "superuser"),
-                               password = getElement(access, "superpassword"),
-                               dbname = getElement(access, "dbname")))
+        # Then disconnect
+        DBI::dbDisconnect(db@con)
 
-          user = getElement(access, "user")
-          password = getElement(access, "password")
+        # And reconnect as user
+        db = connect.database(
+          new("PostgreSQL",
+            host = getElement(access, "host"),
+            port = getElement(access, "port"),
+            user = getElement(access, "user"),
+            password = getElement(access, "password"),
+            dbname = getElement(access, "dbname")
+          )
+        )
 
-          # Eventually create new user
-          if (!(user %in% database.users(db)$usename)) {
-            create.user(db, newUser = user, password = password)
-          }
+        return(db)
 
-          # Then disconnect
-          DBI::dbDisconnect(db@con)
+        },
 
-          print("Disco")
-
-          # And reconnect
-          db = connect.database(new("PostgreSQL",
-                                    host = getElement(access, "host"),
-                                    port = getElement(access, "port"),
-                                    user = getElement(access, "user"),
-                                    password = getElement(access, "password"),
-                                    dbname = getElement(access, "dbname")))
-
-          return(db)
-
-        #   },
-        # error = function(e) {
-        #   return(connect.database(new("SQLite")))
-        # })
-      } else {
+      error = function(e) {
         return(connect.database(new("SQLite")))
-      }
+      })
+
     }
 
+    # Connect to database
     connect = function(dbms, access) {
-
       if (dbms == "RPostgres") {
         tryCatch({
-          connect.database(new("PostgreSQL",
-                               host = getElement(access, "host"),
-                               port = getElement(access, "port"),
-                               user = getElement(access, "user"),
-                               password = getElement(access, "password"),
-                               dbname = getElement(access, "dbname"))
+          connect.database(
+            new("PostgreSQL",
+              host = getElement(access, "host"),
+              port = getElement(access, "port"),
+              user = getElement(access, "user"),
+              password = getElement(access, "password"),
+              dbname = getElement(access, "dbname")
+            )
           )
         },
         error = function(e) {
@@ -174,13 +174,12 @@ mod_database_server <- function(id, r, txt) {
     server = shiny::reactiveValues(
 
       # Supported database types
-      database_types = stats::setNames(c("RPostgres", "RSQLite"),
-                                       c("PostgreSQL", "SQLite")),
+      database_types = c(PostgreSQL = "RPostgres", SQLite = "RSQLite"),
 
       database_access = ENVcredentials(),
 
       # Initially try Postgres connection as superuser
-      db = init_connect(dbms = "RPostgres", access = ENVcredentials())
+      db = init_connect(access = ENVcredentials())
 
     )
 
@@ -188,11 +187,16 @@ mod_database_server <- function(id, r, txt) {
     shiny::observeEvent(input$dbtype, {
 
       # Eventually fetch user defined database access parameters
-      if (all(shiny::isTruthy(c(input$host, input$user, input$password, input$port, input$dbname)))) {
-        acc = stats::setNames(c(input$host, input$user, input$password, input$port, input$dbname),
-                              c("host", "user", "password", "port", "dbname"))
+      if (all(shiny::isTruthy(c(input$host, input$user, input$password,
+                                input$port, input$dbname)))) {
+        acc = c(host = input$host,
+                user = input$user,
+                password = input$password,
+                port = input$port,
+                dbname = input$dbname
+        )
       } else {
-        acc = ENVcredentials()
+        acc = server$database_access
       }
 
       # At first disconnect
@@ -293,13 +297,11 @@ mod_database_server <- function(id, r, txt) {
 
     # Table of database users
     output$ui_users <- shiny::renderUI({
-      # shiny::renderTable(database.users(server$db), bordered = TRUE)
-      DT::renderDataTable(database.users(server$db))
+      DT::renderDataTable(database.users(server$db), options = list(scrollX = TRUE))
     })
 
     # Table of database tables
     output$ui_tables <- shiny::renderUI({
-      # shiny::renderTable(database.tables(server$db), bordered = TRUE)
       DT::renderDataTable(database.tables(server$db), options = list(scrollX = TRUE))
     })
 
