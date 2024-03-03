@@ -64,8 +64,15 @@ mod_database_server <- function(id, r, txt) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Default database access values
-    default_database_access = c(
+
+
+    ### Functions
+
+    # Get credentials from environment
+    get_access_param = function(ENV = shiny::isolate(r$ENV)) {
+
+      # Default database access values
+      acc = c(
         host = "localhost",
         superuser = "user",
         user = "user",
@@ -73,12 +80,8 @@ mod_database_server <- function(id, r, txt) {
         password = "mysecretpassword",
         port = "5432",
         dbname = "mydb"
-    )
+      )
 
-    ### Functions
-
-    # Get credentials from environment
-    ENVcredentials = function(ENV = shiny::isolate(r$ENV), acc = default_database_access) {
 
       # Check if alternatively host is available from env
       if ("DBIP" %in% names(ENV)) {
@@ -100,9 +103,10 @@ mod_database_server <- function(id, r, txt) {
       return(acc)
     }
 
-    # Test initially connection to postgres
+    # Initial connection routine
     init_connect = function(access) {
 
+      # By default test postgress connection
       tryCatch({
 
         # Connect as superuser
@@ -120,6 +124,11 @@ mod_database_server <- function(id, r, txt) {
         if (!(getElement(access, "user") %in% database.users(db)$usename)) {
           create.user(db, newUser = getElement(access, "user"),
                       password = getElement(access, "password"))
+        }
+
+        # Create new user schema if user schema does not exist
+        if (!(getElement(access, "user") %in% database.schemas(db)$schemas)) {
+          create.schema(db, user = getElement(access, "user"))
         }
 
         # Then disconnect
@@ -140,14 +149,16 @@ mod_database_server <- function(id, r, txt) {
 
         },
 
+      # If postgres connection failes return SQLite connection
       error = function(e) {
         return(connect.database(new("SQLite")))
       })
 
     }
 
-    # Connect to database
+    # Ordinary database connection routine
     connect = function(dbms, access) {
+
       if (dbms == "RPostgres") {
         tryCatch({
           connect.database(
@@ -163,6 +174,7 @@ mod_database_server <- function(id, r, txt) {
         error = function(e) {
           return(connect.database(new("SQLite")))
         })
+
       } else {
         return(connect.database(new("SQLite")))
       }
@@ -176,10 +188,10 @@ mod_database_server <- function(id, r, txt) {
       # Supported database types
       database_types = c(PostgreSQL = "RPostgres", SQLite = "RSQLite"),
 
-      database_access = ENVcredentials(),
+      database_access = get_access_param(),
 
       # Initially try Postgres connection as superuser
-      db = init_connect(access = ENVcredentials())
+      db = init_connect(access = get_access_param())
 
     )
 
@@ -305,6 +317,10 @@ mod_database_server <- function(id, r, txt) {
       DT::renderDataTable(database.tables(server$db), options = list(scrollX = TRUE))
     })
 
+    # Table of database tables
+    output$ui_schemas <- shiny::renderUI({
+      DT::renderDataTable(database.schemas(server$db), options = list(scrollX = TRUE))
+    })
 
     # Tabbox for database properties
     output$ui_properties_tabbox <- shiny::renderUI(
@@ -319,7 +335,12 @@ mod_database_server <- function(id, r, txt) {
           # style="max-height: 200px; overflow-x: scroll; overflow-y: scroll",
           txt[23],
           shiny::uiOutput(ns("ui_tables"))
-          )
+        ),
+        shiny::tabPanel(
+          # style="max-height: 200px; overflow-x: scroll; overflow-y: scroll",
+          txt[31],
+          shiny::uiOutput(ns("ui_schemas"))
+        )
       )
     )
 

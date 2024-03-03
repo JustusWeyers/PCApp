@@ -22,6 +22,7 @@ setClass("Database",
            dbname = "character",
 
            users = "data.frame",
+           schemas = "data.frame",
            tables = "data.frame"
          ),
          prototype = list(
@@ -167,7 +168,7 @@ setGeneric("database.tables", function(d) standardGeneric("database.tables"))
 setMethod("database.tables",
           methods::signature(d = "PostgreSQL"),
           function(d) {
-            sql <- r"(SELECT * FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_schema NOT LIKE 'pg_toast%')"
+            sql <- r"(SELECT * FROM information_schema.tables;)"
             d@tables <- DBI::dbGetQuery(d@con, sql)
             return(d@tables)
           })
@@ -180,6 +181,23 @@ setMethod("database.tables",
             return(d@tables)
           })
 
+# Get schemas
+
+setGeneric("database.schemas", function(d, newUser, password) standardGeneric("database.schemas"))
+
+setMethod("database.schemas",
+          methods::signature(d = "PostgreSQL"),
+          function(d, newUser, password) {
+            sql = paste0(r"(SELECT nspname FROM pg_catalog.pg_namespace;)")
+            d@schemas <- DBI::dbGetQuery(d@con, sql)
+            return(d@schemas)
+          })
+
+setMethod("database.schemas",
+          methods::signature(d = "SQLite"),
+          function(d, newUser, password){
+
+          })
 
 # Create user
 
@@ -191,10 +209,28 @@ setMethod("create.user",
             print("Create User")
             sql = paste0(r"(CREATE USER )", newUser, r"( WITH PASSWORD ')", password, r"(';)")
             DBI::dbExecute(d@con, sql)
-          }
-)
+          })
 
 setMethod("create.user",
           methods::signature(d = "SQLite"),
-          function(d, newUser, password){}
-          )
+          function(d, newUser, password){
+
+          })
+
+# Create schema
+
+setGeneric("create.schema", function(d, user) standardGeneric("create.schema"))
+
+setMethod("create.schema",
+          methods::signature(d = "PostgreSQL"),
+          function(d, user){
+            sql = paste0(r"(CREATE SCHEMA AUTHORIZATION )",  user, r"(;)")
+            print(sql)
+            DBI::dbExecute(d@con, sql)
+          })
+
+setMethod("create.schema",
+          methods::signature(d = "SQLite"),
+          function(d, user){
+
+          })
