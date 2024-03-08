@@ -79,33 +79,11 @@ covrpage::covrpage()
 ## (You'll need GitHub there)
 usethis::use_github()
 
+# R Buildignore
+usethis::use_build_ignore(c("shinyproxy-3.0.2.jar", "application.yml", ".env"))
+
 # GitHub Actions
 usethis::use_github_action("docker")
-# Chose one of the three
-# See https://usethis.r-lib.org/reference/use_github_action.html
-usethis::use_github_action_check_release()
-usethis::use_github_action_check_standard()
-usethis::use_github_action_check_full()
-# Add action for PR
-usethis::use_github_action_pr_commands()
-
-# Travis CI
-usethis::use_travis()
-usethis::use_travis_badge()
-
-# AppVeyor
-usethis::use_appveyor()
-usethis::use_appveyor_badge()
-
-# Circle CI
-usethis::use_circleci()
-usethis::use_circleci_badge()
-
-# Jenkins
-usethis::use_jenkins()
-
-# GitLab CI
-usethis::use_gitlab_ci()
 
 # You're now set! ----
 # go to dev/03_deploy.R

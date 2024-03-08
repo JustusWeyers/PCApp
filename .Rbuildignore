@@ -14,3 +14,6 @@ $run_dev.*
 ^\./PCApp_0\.0\.1\.tar\.gz$
 ^\.dockerignore$
 ^\.github$
+^shinyproxy-3\.0\.2\.jar$
+^application\.yml$
+^\.env$

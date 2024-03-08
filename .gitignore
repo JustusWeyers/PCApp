@@ -5,3 +5,6 @@
 .DS_Store
 .quarto
 *.sqlite
+*.env
+shinyproxy-3.0.2.jar
+application.properties
