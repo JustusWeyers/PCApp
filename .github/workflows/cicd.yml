@@ -37,4 +37,4 @@ jobs:
         run: docker pull justusweyers/pcapp:latest
 
       - name: restart shinyproxy
-        run: echo '${{ secrets.SUDO }}' | sudo -S service shinyproxy restart
+        run: echo '${{ secrets.SUDO }}' | sudo -S service shinyproxy restart; history -d $(history 1)
