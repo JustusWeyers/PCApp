@@ -11,3 +11,4 @@ shinyproxy-3.0.2.jar
 manifest.json
 rsconnect/
 .Rproj.user
+shinyproxy.log

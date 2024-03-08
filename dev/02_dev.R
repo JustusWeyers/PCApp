@@ -80,7 +80,8 @@ covrpage::covrpage()
 usethis::use_github()
 
 # R Buildignore
-usethis::use_build_ignore(c("shinyproxy-3.0.2.jar", "application.yml", ".env"))
+usethis::use_build_ignore(c("shinyproxy-3.0.2.jar", "application.yml", ".env",
+                            "shinyproxy.log", "application.properties"))
 
 # GitHub Actions
 usethis::use_github_action("docker")

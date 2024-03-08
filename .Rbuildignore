@@ -17,3 +17,5 @@ $run_dev.*
 ^shinyproxy-3\.0\.2\.jar$
 ^application\.yml$
 ^\.env$
+^shinyproxy\.log$
+^application\.properties$

@@ -29,3 +29,7 @@ proxy:
       container-env-file: .env
       container-env:
         DBIP: ${DBIP}
+
+logging:
+  file:
+    name: shinyproxy.log
