@@ -26,7 +26,7 @@ mod_upload_timeseries_server <- function(id, r, txt){
 
     # Tab title
     output$ui_tab_title <- shiny::renderUI({
-      shiny::renderText(txt[25])
+      shiny::renderText("Change") # txt[25]
     })
   })
 }
