@@ -1,0 +1,40 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  publish_image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@main
+      - name: build
+        run: 
+          docker build -t justusweyers/pcapp:latest .
+      - name: login
+        run:
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: push
+        run:
+          docker push justusweyers/pcapp:latest
+
+  deploy_webapp:
+    runs-on: self-hosted
+    steps:
+      - name: checkout
+        uses: actions/checkout@main
+      - name: create environment
+        run: echo 'PORT=${{ secrets.PORT }}' > .env
+      - name: create application properties
+        run: echo 'PORT=${{ secrets.PORT }}' > application.properties
+
+      - name: pull webapp
+        run: docker pull justusweyers/pcapp:latest
+
+      
+
+
