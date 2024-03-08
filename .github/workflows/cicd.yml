@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@main
       - name: build
         run: 
-          docker build -t justusweyers/pcapp:latest .
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/pcapp:latest .
       - name: login
         run:
           docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
@@ -37,4 +37,4 @@ jobs:
         run: docker pull justusweyers/pcapp:latest
 
       - name: restart shinyproxy
-        run: sudo service shinyproxy restart
+        run: sudo -S <<< ${{ secrets.SUDO }} service shinyproxy restart
