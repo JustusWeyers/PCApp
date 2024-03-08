@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@main
+        uses: actions/checkout@v3
       - name: build
         run: 
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/pcapp:latest .
@@ -27,7 +27,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: checkout
-        uses: actions/checkout@main
+        uses: actions/checkout@v3
       - name: create environment
         run: echo 'PORT=${{ secrets.PORT }}' > .env
       - name: create application properties
