@@ -23,7 +23,7 @@ jobs:
           docker push justusweyers/pcapp:latest
 
   deploy_webapp:
-    needs: [publish_image]
+    # needs: [publish_image]
     runs-on: self-hosted
     steps:
       - name: checkout
@@ -37,4 +37,4 @@ jobs:
         run: docker pull justusweyers/pcapp:latest
 
       - name: restart shinyproxy
-        run: echo ${{ secrets.SUDO }} | sudo -S -u user service shinyproxy restart
+        run: echo "${{ secrets.SUDO }}" | sudo -S service shinyproxy restart
