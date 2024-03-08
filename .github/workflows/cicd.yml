@@ -35,6 +35,5 @@ jobs:
       - name: pull webapp
         run: docker pull justusweyers/pcapp:latest
 
-      
-
-
+      - name: restart shinyproxy
+        run: service shinyproxy restart
