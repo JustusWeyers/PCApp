@@ -12,17 +12,17 @@ app_server <- function(input, output, session) {
   # Global reactive values
   r <- shiny::reactiveValues()
 
-  # Environment
+  # Read environment
   r$ENV = Sys.getenv()
 
   # Fetch application language
   lang <- golem::get_golem_options("lang")
 
-  # Read app text depending on golem_opts 'lang'
+  # Read apptext (internal) depending on golem_opts 'lang'
   if (is.null(lang)) {
-    txt <- apptext[["en"]]
+    txt <- internal$apptext[["en"]]
   } else {
-    txt <- apptext[[lang]]
+    txt <- internal$apptext[[lang]]
   }
 
   # Render sidebar menu based on txt elements

@@ -23,7 +23,8 @@ setClass("Database",
 
            users = "data.frame",
            schemas = "data.frame",
-           tables = "data.frame"
+           tables = "data.frame",
+           searchpath = "data.frame"
          ),
          prototype = list(
            host = NA_character_,
@@ -190,7 +191,7 @@ setMethod("database.schemas",
           function(d, newUser, password) {
             sql = paste0(r"(SELECT nspname FROM pg_catalog.pg_namespace;)")
             d@schemas <- DBI::dbGetQuery(d@con, sql)
-            return(d@schemas)
+            return(d@schemas$nspname)
           })
 
 setMethod("database.schemas",
@@ -225,11 +226,28 @@ setMethod("create.schema",
           methods::signature(d = "PostgreSQL"),
           function(d, user){
             sql = paste0(r"(CREATE SCHEMA AUTHORIZATION )",  user, r"(;)")
-            print(sql)
             DBI::dbExecute(d@con, sql)
           })
 
 setMethod("create.schema",
+          methods::signature(d = "SQLite"),
+          function(d, user){
+
+          })
+
+# Show search path
+
+setGeneric("database.searchpath", function(d, user) standardGeneric("database.searchpath"))
+
+setMethod("database.searchpath",
+          methods::signature(d = "PostgreSQL"),
+          function(d, user){
+            sql = r"(SHOW search_path;)"
+            d@searchpath <- DBI::dbGetQuery(d@con, sql)
+            return(d@searchpath$search_path)
+          })
+
+setMethod("database.searchpath",
           methods::signature(d = "SQLite"),
           function(d, user){
 

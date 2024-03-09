@@ -56,7 +56,7 @@ mod_database_ui <- function(id) {
 #' @importFrom shiny observeEvent renderUI textInput reactive
 #' @importFrom shiny reactiveValues img tabPanel fluidRow uiOutput titlePanel
 #' @importFrom shiny isTruthy renderTable moduleServer isolate renderText
-#' @importFrom shiny passwordInput
+#' @importFrom shiny passwordInput textOutput
 #' @importFrom shinyThings radioSwitchButtons
 #' @importFrom shinydashboard tabBox
 
@@ -64,24 +64,10 @@ mod_database_server <- function(id, r, txt) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-
-
     ### Functions
 
-    # Get credentials from environment
-    get_access_param = function(ENV = shiny::isolate(r$ENV)) {
-
-      # Default database access values
-      acc = c(
-        host = "localhost",
-        superuser = "user",
-        user = "user",
-        superpassword = "mysecretpassword",
-        password = "mysecretpassword",
-        port = "5432",
-        dbname = "mydb"
-      )
-
+    # Fetch credentials from environment
+    fetch_credentials = function(ENV = shiny::isolate(r$ENV), acc = internal$acc) {
 
       # Check if alternatively host is available from env
       if ("DBIP" %in% names(ENV)) {
@@ -99,6 +85,8 @@ mod_database_server <- function(id, r, txt) {
       if (paste0(acc["user"], "_db_password") %in% names(ENV)) {
         acc["password"] <- getElement(ENV, paste0(acc["user"], "_db_password"))
       }
+
+      print(acc)
 
       return(acc)
     }
@@ -127,7 +115,7 @@ mod_database_server <- function(id, r, txt) {
         }
 
         # Create new user schema if user schema does not exist
-        if (!(getElement(access, "user") %in% database.schemas(db)$schemas)) {
+        if (!(getElement(access, "user") %in% database.schemas(db))) {
           create.schema(db, user = getElement(access, "user"))
         }
 
@@ -147,10 +135,11 @@ mod_database_server <- function(id, r, txt) {
 
         return(db)
 
-        },
+      },
 
       # If postgres connection failes return SQLite connection
       error = function(e) {
+        print(e)
         return(connect.database(new("SQLite")))
       })
 
@@ -182,16 +171,19 @@ mod_database_server <- function(id, r, txt) {
 
     ### Serverlogic
 
+    # Fetch database access
+    database_access = fetch_credentials()
+
     # Module servers global variables
     server = shiny::reactiveValues(
 
       # Supported database types
       database_types = c(PostgreSQL = "RPostgres", SQLite = "RSQLite"),
 
-      database_access = get_access_param(),
+      database_access = database_access,
 
       # Initially try Postgres connection as superuser
-      db = init_connect(access = get_access_param())
+      db = init_connect(access = database_access)
 
     )
 
@@ -317,10 +309,11 @@ mod_database_server <- function(id, r, txt) {
       DT::renderDataTable(database.tables(server$db), options = list(scrollX = TRUE))
     })
 
-    # Table of database tables
-    output$ui_schemas <- shiny::renderUI({
-      DT::renderDataTable(database.schemas(server$db), options = list(scrollX = TRUE))
-    })
+    # List of database schemas
+    output$ui_schemas <- renderText(paste(database.schemas(server$db), collapse=", "))
+
+    # DAtabase searchpath
+    output$ui_searchpath <- renderText(gsub('"user', paste0("user:", server$db@user), database.searchpath(server$db)))
 
     # Tabbox for database properties
     output$ui_properties_tabbox <- shiny::renderUI(
@@ -339,7 +332,8 @@ mod_database_server <- function(id, r, txt) {
         shiny::tabPanel(
           # style="max-height: 200px; overflow-x: scroll; overflow-y: scroll",
           txt[31],
-          shiny::uiOutput(ns("ui_schemas"))
+          shiny::textOutput(ns("ui_schemas")),
+          shiny::textOutput(ns("ui_searchpath"))
         )
       )
     )

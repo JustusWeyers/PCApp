@@ -22,19 +22,21 @@ jobs:
         run:
           docker push justusweyers/pcapp:latest
 
-  deploy_webapp:
-    needs: [publish_image]
-    runs-on: self-hosted
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-      - name: create environment
-        run: echo 'PORT=${{ secrets.PORT }}' > .env
-      - name: create application properties
-        run: echo 'PORT=${{ secrets.PORT }}' > application.properties
-      - name: pull webapp
-        run: docker pull justusweyers/pcapp:latest
-      - name: restart shinyproxy
-        run: echo '${{ secrets.SUDO }}' | sudo -S service shinyproxy restart
-      - name: clean up
-        run: history -c
+  # Achtung: $ vor Platzhaltern entfernt
+
+  # deploy_webapp:
+  #   needs: [publish_image]
+  #   runs-on: self-hosted
+  #   steps:
+  #     - name: checkout
+  #       uses: actions/checkout@v3
+  #     - name: create environment
+  #       run: echo 'PORT={{ secrets.PORT }}' > .env
+  #     - name: create application properties
+  #       run: echo 'PORT={{ secrets.PORT }}' > application.properties
+  #     - name: pull webapp
+  #       run: docker pull justusweyers/pcapp:latest
+  #     - name: restart shinyproxy
+  #       run: echo '{{ secrets.SUDO }}' | sudo -S service shinyproxy restart
+  #     - name: clean up
+  #       run: history -c

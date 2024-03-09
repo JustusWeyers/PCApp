@@ -27,9 +27,3 @@ proxy:
       container-network-connections: [ "app_network" ]
       access-groups: [ admin, user]
       container-env-file: .env
-      container-env:
-        DBIP: ${DBIP}
-
-logging:
-  file:
-    name: shinyproxy.log

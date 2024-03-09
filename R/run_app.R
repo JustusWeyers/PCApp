@@ -2,6 +2,7 @@
 #'
 #' @param ... arguments to pass to golem_opts.
 #' @param lang name of the language in internal data 'apptext' to use
+#' @param webmode enable webmode or not
 #' See `?golem::get_golem_options` for more details.
 #' @inheritParams shiny::shinyApp
 #'
@@ -14,6 +15,7 @@ run_app <- function(
     enableBookmarking = NULL,
     uiPattern = "/",
     lang = "en",
+    webmode = FALSE,
     ...) {
   with_golem_options(
     app = shinyApp(
@@ -25,7 +27,8 @@ run_app <- function(
       uiPattern = uiPattern
     ),
     golem_opts = list(
-      lang = lang
+      lang = lang,
+      webmode = webmode
     )
   )
 }

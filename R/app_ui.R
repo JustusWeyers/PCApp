@@ -16,7 +16,7 @@ app_ui <- function(request) {
     shinydashboard::dashboardPage(
 
       # Header
-      shinydashboard::dashboardHeader(title = "PCAppi"),
+      shinydashboard::dashboardHeader(title = "PCApp"),
 
       # Sidebar
       shinydashboard::dashboardSidebar(

@@ -53,7 +53,20 @@ golem::add_sass_file("custom")
 apptextfiles <- list.files(pattern = "\\.csv$", path = "inst/app/language/")
 apptext <- lapply(file.path("inst/app/language/", apptextfiles), \(x) read.csv(x, header = FALSE)[, 1])
 names(apptext) <- tools::file_path_sans_ext(apptextfiles)
-usethis::use_data(apptext, internal = TRUE, overwrite = TRUE)
+
+# Default database access values
+acc = c(
+  host = "localhost",
+  superuser = "user",
+  user = "user",
+  superpassword = "mysecretpassword",
+  password = "mysecretpassword",
+  port = "5432",
+  dbname = "mydb"
+)
+
+internal = list("apptext" = apptext, "acc" = acc)
+usethis::use_data(internal, internal = TRUE, overwrite = TRUE)
 
 # Tests ----
 ## Add one line by test you want to create
@@ -81,7 +94,7 @@ usethis::use_github()
 
 # R Buildignore
 usethis::use_build_ignore(c("shinyproxy-3.0.2.jar", "application.yml", ".env",
-                            "shinyproxy.log", "application.properties"))
+                            "application.properties"))
 
 # GitHub Actions
 usethis::use_github_action("docker")
