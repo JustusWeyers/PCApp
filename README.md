@@ -12,9 +12,9 @@ application is intended to offer the possibility of investigating these
 time series using principal component analysis (PCA).
 
 It should therefore be possible to install and run the PCApp locally as
-an R package, see \[## Local execution\]. On the other hand, it is
-intended to make the application available online, see \[## Web
-Application\]
+an R package, see [Local execution](#local-execution). On the other
+hand, it is intended to make the application available online, see [Web
+Application](#web-application)
 
 ## Local execution
 
