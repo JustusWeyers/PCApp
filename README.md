@@ -1,14 +1,23 @@
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
 # PCApp
 
-<!-- badges: start -->
-<!-- badges: end -->
+Hydrological time series from monitoring networks are a valuable source
+of information on the dynamics of the water cycle. Depending on the
+issue at hand, it is hoped that the investigation of these will yield
+insights into small-scale, possibly anthropogenic or large-scale,
+possibly climatic influences on the landscape water balance. In Germany,
+some programs for recording runoff volumes, groundwater or lake levels,
+for example, have already been in existence for decades. This web
+application is intended to offer the possibility of investigating these
+time series using principal component analysis (PCA).
 
-The goal of PCApp is to …
+It should therefore be possible to install and run the PCApp locally as
+an R package, see [here](#localexec). On the other hand, it is intended
+to make the application available online, see [here](#webapp)
 
-## Installation
+## Local execution
+
+### Installation
 
 You can install the development version of PCApp via GitHub:
 
@@ -19,7 +28,7 @@ utils::install.packages("remotes")
 remotes::install_github("JustusWeyers/PCApp")
 ```
 
-## Run Application
+### Example
 
 Launch shiny application like so:
 
@@ -27,3 +36,16 @@ Launch shiny application like so:
 library(PCApp)
 PCApp::run_app()
 ```
+
+## Web Application
+
+in the making
+
+<!-- # References -->
+<!-- <div id="refs"></div> -->
+
+------------------------------------------------------------------------
+
+Justus Weyers, 12.03.2024
+
+*– Translated by DeepL*
