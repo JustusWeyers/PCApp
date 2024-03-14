@@ -7,22 +7,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish_image:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-      - name: build
-        run: 
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/pcapp:latest .
-      - name: login
-        run:
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: push
-        run:
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/pcapp:latest
-
-  # Achtung: $ vor Platzhaltern entfernt
+  # publish_image:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: checkout
+  #       uses: actions/checkout@v3
+  #     - name: build
+  #       run: 
+  #         docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/pcapp:latest .
+  #     - name: login
+  #       run:
+  #         docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+  #     - name: push
+  #       run:
+  #         docker push ${{ secrets.DOCKERHUB_USERNAME }}/pcapp:latest
 
   deploy_webapp:
     # needs: [publish_image]
@@ -37,7 +35,7 @@ jobs:
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
       - name: copyjob
-        run: echo '{{ secrets.SUDO }}' | sudo -S cp /home/${{ secrets.ACTIONS_USER }}/actions-runner/_work/testi.txt /home/root/testi.txt 
+        run: cp /home/${{ secrets.ACTIONS_USER }}/actions-runner/_work/testi.txt /home/root/testi.txt 
       - name: namespace
         run: echo '{{ secrets.SUDO }}' | sudo -S chown root:root /home/root/testi.txt
       - name: restart shinyproxy
