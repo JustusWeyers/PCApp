@@ -33,7 +33,7 @@ jobs:
       - name: request application properties
         run: |
           echo '${{ secrets.SUDO }}' | sudo -S echo 'PORT=${{ secrets.PORT }}' > application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S echo 'PORT=${{ secrets.TITLE }}' > application.properties\
+          echo '${{ secrets.SUDO }}' | sudo -S echo 'TITLE=${{ secrets.TITLE }}' > application.properties\
       - name: write application properties
         run: echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties
       # - name: pull webapp
