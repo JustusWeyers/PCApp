@@ -44,8 +44,8 @@ jobs:
 
       - name: file permission
         run: >
-          chown root /etc/shinyproxy/.env
-          chown root /etc/shinyproxy/application.properties
+          echo '${{ secrets.SUDO }}' | sudo -Schown root /etc/shinyproxy/.env
+          echo '${{ secrets.SUDO }}' | sudo -Schown root /etc/shinyproxy/application.properties
       
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
