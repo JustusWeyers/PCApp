@@ -37,7 +37,7 @@ jobs:
       - name: copyjob
         run: >
           echo '${{ secrets.SUDO }}' | sudo -S cp application.yml /etc/shinyproxy/application.yml
-          echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties
+          echo 'PORT=${{ secrets.PORT }}' > /etc/shinyproxy/application.properties
       - name: restart shinyproxy
         run: echo '${{ secrets.SUDO }}' | sudo -S service shinyproxy restart
       - name: clean up
