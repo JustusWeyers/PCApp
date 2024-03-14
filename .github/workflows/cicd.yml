@@ -40,10 +40,9 @@ jobs:
         run: echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env
       - name: file permission
         run: >
-          echo '${{ secrets.SUDO }}' | sudo -S chown root /etc/shinyproxy/.env
-          echo '${{ secrets.SUDO }}' | sudo -S chown root /etc/shinyproxy/application.properties
+          echo '${{ secrets.SUDO }}' | sudo -S chown root /etc/shinyproxy/.env /etc/shinyproxy/application.properties
       - name: pull webapp
-        run: docker pull justusweyers/pcapp:latest
+        run: echo '${{ secrets.SUDO }}' | sudo -S docker pull justusweyers/pcapp:latest
       - name: restart shinyproxy
         run: echo '${{ secrets.SUDO }}' | sudo -S service shinyproxy restart
       - name: clean up

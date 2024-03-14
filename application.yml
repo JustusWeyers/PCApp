@@ -1,7 +1,7 @@
 server:
   forward-headers-strategy: native
 proxy:
-  title: ${TITLE:-"Default title"}
+  title: ShinyProxy
 #  logo-url: https://link/to/your/logo.png
   landing-page: /
   favicon-path: favicon.ico
