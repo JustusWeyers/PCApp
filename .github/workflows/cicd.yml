@@ -33,20 +33,14 @@ jobs:
         run: echo '${{ secrets.SUDO }}' | sudo -S cp application.yml /etc/shinyproxy/application.yml
 
       - name: request application properties
-        run: |
-          echo '${{ secrets.SUDO }}' | sudo -S echo '${{ secrets.APPLICATION_PROPERTIES }}' > application.properties\
+        run: echo '${{ secrets.SUDO }}' | sudo -S echo '${{ secrets.APPLICATION_PROPERTIES }}' > application.properties\
       - name: write application properties
-        run: |
-          echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S rm application.yml
+        run: echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties
 
       - name: request container environment
-        run: |
-          echo '${{ secrets.SUDO }}' | sudo -S echo '${{ secrets.ENV }}' > .env
+        run: echo '${{ secrets.SUDO }}' | sudo -S echo '${{ secrets.ENV }}' > .env
       - name: write application environment
-        run: | 
-          echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env\
-          echo '${{ secrets.SUDO }}' | sudo -S rm .env
+        run: echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env
 
       
       # - name: pull webapp
