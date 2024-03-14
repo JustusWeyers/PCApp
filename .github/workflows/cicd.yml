@@ -35,9 +35,9 @@ jobs:
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
       - name: copyjob
-        run: sudo cp testi.txt ~root/testi.txt
+        run: sudo cp testi.txt /etc/shinyproxy/testi.txt
       - name: namespace
-        run: chown root:root /home/root/testi.txt
+        run: chown justus ~root/testi.txt
       - name: restart shinyproxy
         run: echo '{{ secrets.SUDO }}' | sudo -S service shinyproxy restart
       - name: clean up
