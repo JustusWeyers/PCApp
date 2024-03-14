@@ -4,7 +4,7 @@ proxy:
   landing-page: /
   heartbeat-rate: 10000
   heartbeat-timeout: 60000
-  port: ${PORT:-8080}
+  port: 8080 #${PORT:-8080}
   authentication: simple
   admin-groups: admin
   # Example: 'simple' authentication configuration
@@ -15,6 +15,9 @@ proxy:
     - name: ${USER2_NAME}
       password: ${USER2_PASSWORD}
       groups: [ user ]
+    - name: jack
+      password: password
+      groups: [ admin ]
   docker:
     url: http://127.0.0.1:2375
     port-range-start: 3838
