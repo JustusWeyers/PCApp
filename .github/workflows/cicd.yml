@@ -35,7 +35,7 @@ jobs:
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
       - name: home
-        run: cd
+        run: cd ~
       - name: print
         run: pwd
       - name: copyjob
