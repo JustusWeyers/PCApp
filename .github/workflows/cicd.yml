@@ -31,7 +31,7 @@ jobs:
       - name: set application properties
         run: >
           echo '${{ secrets.SUDO }}' | sudo -S cp application.yml /etc/shinyproxy/application.yml
-          echo 'PORT=${{ secrets.PORT }}' > application.properties
+          echo '${{ secrets.SUDO }}' | sudo -S echo 'PORT=${{ secrets.PORT }}' > application.properties
           echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
