@@ -28,14 +28,23 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
+
       - name: set application
         run: echo '${{ secrets.SUDO }}' | sudo -S cp application.yml /etc/shinyproxy/application.yml
+
       - name: request application properties
         run: |
-          echo '${{ secrets.SUDO }}' | sudo -S echo 'PORT=${{ secrets.PORT }}' > application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S echo 'TITLE=${{ secrets.TITLE }}' > application.properties\
+          echo '${{ secrets.SUDO }}' | sudo -S echo 'PORT=${{ secrets.PROP_PORT }}' > application.properties\
+          echo '${{ secrets.SUDO }}' | sudo -S echo 'TITLE=${{ secrets.PROP_TITLE }}' > application.properties
       - name: write application properties
         run: echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties
+
+      - name: request container environment
+        run: |
+          echo '${{ secrets.SUDO }}' | sudo -S echo 'PORT=${{ secrets.ENV_DBIP }}' > .env\
+      - name: write application properties
+        run: echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env
+      
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
       - name: restart shinyproxy
