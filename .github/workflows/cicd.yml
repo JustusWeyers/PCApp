@@ -44,9 +44,7 @@ jobs:
           echo '${{ secrets.SUDO }}' | sudo -S echo 'USER2PASSWORD=${{ secrets.PROP_USER2PASSWORD }}' >> application.properties
 
       - name: write application properties
-        run: |
-          echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S rm application.properties
+        run: echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties
 
       - name: request container environment
         run: |
@@ -55,10 +53,7 @@ jobs:
           echo '${{ secrets.SUDO }}' | sudo -S echo 'USER1DBPASS=${{ secrets.ENV_USER1DBPASS }}' >> env.env\
           echo '${{ secrets.SUDO }}' | sudo -S echo 'USER2DBPASS=${{ secrets.ENV_USER2DBPASS }}' >> env.env
       - name: write application properties
-        run: |
-          echo '${{ secrets.SUDO }}' | sudo -S cp env.env /etc/shinyproxy/env.env\
-          echo '${{ secrets.SUDO }}' | sudo -S rm env.env
-
+        run: echo '${{ secrets.SUDO }}' | sudo -S cp env.env /etc/shinyproxy/env.env
       
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
