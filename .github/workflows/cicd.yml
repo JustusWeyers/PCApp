@@ -42,6 +42,10 @@ jobs:
       - name: write application environment
         run: echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env
 
+      - name: file permission
+        run: >
+          chown root /etc/shinyproxy/.env
+          chown root /etc/shinyproxy/application.properties
       
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
