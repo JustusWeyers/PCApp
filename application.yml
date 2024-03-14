@@ -31,7 +31,7 @@ proxy:
       container-image: justusweyers/pcapp:latest
       container-network-connections: [ "app_network" ]
       access-groups: [ admin]
-      container-env-file: .env
+      container-env-file: env.env
 
 logging:
   file:

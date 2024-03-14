@@ -50,14 +50,14 @@ jobs:
 
       - name: request container environment
         run: |
-          echo '${{ secrets.SUDO }}' | sudo -S echo  > .env\
-          echo '${{ secrets.SUDO }}' | sudo -S echo 'PORT=${{ secrets.ENV_DBIP }}' >> .env\
-          echo '${{ secrets.SUDO }}' | sudo -S echo 'USER1DBPASS=${{ secrets.ENV_USER1DBPASS }}' >> .env\
-          echo '${{ secrets.SUDO }}' | sudo -S echo 'USER2DBPASS=${{ secrets.ENV_USER2DBPASS }}' >> .env
+          echo '${{ secrets.SUDO }}' | sudo -S echo  > env.env\
+          echo '${{ secrets.SUDO }}' | sudo -S echo 'PORT=${{ secrets.ENV_DBIP }}' >> env.env\
+          echo '${{ secrets.SUDO }}' | sudo -S echo 'USER1DBPASS=${{ secrets.ENV_USER1DBPASS }}' >> env.env\
+          echo '${{ secrets.SUDO }}' | sudo -S echo 'USER2DBPASS=${{ secrets.ENV_USER2DBPASS }}' >> env.env
       - name: write application properties
         run: |
-          echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env\
-          echo '${{ secrets.SUDO }}' | sudo -S rm .env
+          echo '${{ secrets.SUDO }}' | sudo -S cp env.env /etc/shinyproxy/env.env\
+          echo '${{ secrets.SUDO }}' | sudo -S rm env.env
 
       
       # - name: pull webapp
