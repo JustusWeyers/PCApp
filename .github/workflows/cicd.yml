@@ -29,7 +29,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
       - name: set application
-        cat ${{ secrets.SUDO }}
+        run: cat ${{ secrets.SUDO }}
       - name: set application
         run: echo '${{ secrets.SUDO }}' | sudo -S cp application.yml /etc/shinyproxy/application.yml
       - name: request application properties
