@@ -34,6 +34,8 @@ jobs:
       #   run: echo 'PORT={{ secrets.PORT }}' > application.properties
       # - name: pull webapp
       #   run: docker pull justusweyers/pcapp:latest
+      - name: print
+        run: pwd
       - name: copyjob
         run: cp /home/${{ secrets.ACTIONS_USER }}/actions-runner/_work/testi.txt /home/root/testi.txt 
       - name: namespace
