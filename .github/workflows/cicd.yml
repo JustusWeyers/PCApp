@@ -35,12 +35,12 @@ jobs:
       - name: request application properties
         run: |
           echo '${{ secrets.SUDO }}' | sudo -S cat /dev/null > application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'PORT=${{ secrets.PROP_PORT }}' >> application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'TITLE=${{ secrets.PROP_TITLE }}' >> application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'USER1NAME=${{ secrets.PROP_USER1NAME }}' >> application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'USER1PASSWORD=${{ secrets.PROP_USER1PASSWORD }}' >> application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'USER2NAME=${{ secrets.PROP_USER2NAME }}' >> application.properties\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'USER2PASSWORD=${{ secrets.PROP_USER2PASSWORD }}' >> application.properties
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'PORT=${{ secrets.PROP_PORT }}' >> application.properties\
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'TITLE=${{ secrets.PROP_TITLE }}' >> application.properties\
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'USER1NAME=${{ secrets.PROP_USER1NAME }}' >> application.properties\
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'USER1PASSWORD=${{ secrets.PROP_USER1PASSWORD }}' >> application.properties\
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'USER2NAME=${{ secrets.PROP_USER2NAME }}' >> application.properties\
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'USER2PASSWORD=${{ secrets.PROP_USER2PASSWORD }}' >> application.properties
       - name: write application properties
         run: |
           echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties\
@@ -49,9 +49,9 @@ jobs:
       - name: request container environment
         run: |
           echo '${{ secrets.SUDO }}' | sudo -S cat /dev/null > .env\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'PORT=${{ secrets.ENV_DBIP }}' >> .env\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'USER1DBPASS=${{ secrets.ENV_USER1DBPASS }}' >> .env\
-          echo '${{ secrets.SUDO }}' | sudo -S echo -e 'USER2DBPASS=${{ secrets.ENV_USER2DBPASS }}' >> .env
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'PORT=${{ secrets.ENV_DBIP }}' >> .env\
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'USER1DBPASS=${{ secrets.ENV_USER1DBPASS }}' >> .env\
+          echo '${{ secrets.SUDO }}' | sudo -S printf 'USER2DBPASS=${{ secrets.ENV_USER2DBPASS }}' >> .env
       - name: write application properties
         run: | 
           echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env\
