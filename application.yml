@@ -27,3 +27,11 @@ proxy:
       container-network-connections: [ "app_network" ]
       access-groups: [ admin, user]
       container-env-file: .env
+    - id: pcapp
+      display-name: PCApp Test
+      description: Principal component analysis with time series
+      container-cmd: ["R", "-e", "PCApp::run_app()"]
+      container-image: justusweyers/pcapp:latest
+      container-network-connections: [ "app_network" ]
+      access-groups: [ admin, user]
+      container-env-file: .env
