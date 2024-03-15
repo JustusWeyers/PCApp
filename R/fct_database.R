@@ -6,7 +6,7 @@
 #'
 #' @importFrom RPostgres Postgres
 #' @importFrom RSQLite SQLite
-#' @importFrom DBI dbCanConnect dbConnect dbGetQuery dbExecute
+#' @importFrom DBI dbCanConnect dbConnect dbGetQuery dbExecute dbWriteTable
 #' @importFrom methods signature
 #'
 #' @noRd
@@ -24,7 +24,8 @@ setClass("Database",
            users = "data.frame",
            schemas = "data.frame",
            tables = "data.frame",
-           searchpath = "data.frame"
+           searchpath = "data.frame",
+           usertables = "data.frame"
          ),
          prototype = list(
            host = NA_character_,
@@ -251,4 +252,58 @@ setMethod("database.searchpath",
           methods::signature(d = "SQLite"),
           function(d, user){
 
+          })
+
+# Get user tables
+
+setGeneric("user.tables", function(d) standardGeneric("user.tables"))
+
+setMethod("user.tables",
+          methods::signature(d = "PostgreSQL"),
+          function(d){
+            sql = r"(SELECT * FROM pg_tables t WHERE t.tableowner = current_user;)"
+            d@usertables <- DBI::dbGetQuery(d@con, sql)
+            # print("Method user.tables:")
+            # print(d@usertables)
+            return(d@usertables)
+          })
+
+setMethod("user.tables",
+          methods::signature(d = "SQLite"),
+          function(d){
+            sql = r"(tables)"
+            d@usertables <- DBI::dbGetQuery(d@con, sql)
+            return(d@usertables)
+          })
+
+# Write table
+
+setGeneric("write.dbtable", function(d, name, df) standardGeneric("write.dbtable"))
+
+setMethod("write.dbtable",
+          methods::signature(d = "PostgreSQL"),
+          function(d, name, df){
+            DBI::dbWriteTable(d@con, name, df)
+          })
+
+setMethod("write.dbtable",
+          methods::signature(d = "SQLite"),
+          function(d, name, df){
+            DBI::dbWriteTable(d@con, name, df)
+          })
+
+# Delete table
+
+setGeneric("delete.dbtable", function(d, name, df) standardGeneric("delete.dbtable"))
+
+setMethod("delete.dbtable",
+          methods::signature(d = "PostgreSQL"),
+          function(d, name, df){
+            DBI::dbRemoveTable(d@con, name)
+          })
+
+setMethod("delete.dbtable",
+          methods::signature(d = "SQLite"),
+          function(d, name, df){
+            DBI::dbRemoveTable(d@con, name)
           })

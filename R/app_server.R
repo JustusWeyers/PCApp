@@ -29,9 +29,8 @@ app_server <- function(input, output, session) {
   output$sidebarmenu <- render_sidebar(apptext = txt[c(29, 1)])
 
   # Modular code
-  mod_import_server("import_timeseries", r, txt, title = txt[25])
-
-
   mod_database_server("database_tab", r, txt)
   mod_ENV_server("ENV_1")
+
+  mod_import_server("import_timeseries", r, txt, title = txt[25])
 }

@@ -7,16 +7,20 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' @importFrom tools file_path_sans_ext
+#'
+
 mod_import_ui <- function(id){
   ns <- NS(id)
   shiny::tabPanel(
-    "Title", # shiny::uiOutput(ns("ui_tab_title")),
+    shiny::uiOutput(ns("ui_tab_title")),
     shiny::tagList(
       shiny::fluidPage(
         # Body
         h1("H1"),
         shiny::fluidRow(
-          shiny::uiOutput(ns("ui_boxes"))
+          shiny::uiOutput(ns("ui_boxes")),
+          shiny::uiOutput(ns("ui_empty_box"))
         )
       )
     )
@@ -26,24 +30,55 @@ mod_import_ui <- function(id){
 #' import Server Functions
 #'
 #' @importFrom purrr lmap
+#' @importFrom utils read.csv
 #' @noRd
 mod_import_server <- function(id, r, txt, title){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
+    databoxes = function(tables) {
+      boxes = purrr::lmap(tables, function(name) shinydashboard::box(
+        id = ns(paste0("box_", name)), title = name, width = "100%",
+        actionButton(ns(paste0("delete_", name)), "Delete")
+        ))
+      return(boxes)
+    }
+
+    # Server code
+
+    server = reactiveValues(
+      tables = c()
+    )
+
+    # Import data
+    observeEvent(ns(input$upload), {
+      if (!is.null(input$upload)) {
+        print(input$upload$datapath)
+
+        name = tools::file_path_sans_ext(input$upload$name)
+        df = read.csv(input$upload$datapath)
+
+        write.dbtable(r$mod_database$db, name = name, df = df)
+      }
+      server$tables = user.tables(r$mod_database$db)$tablename
+    })
+
+    # Delete data
+
+    # UI Elements
+
     output$ui_tab_title <- shiny::renderUI({
       shiny::renderText(title)
     })
 
-    databox = function(n) {
-      boxes = purrr::lmap(n, function(i) shinydashboard::box(
-        id = ns(paste0("box_", i)), title = toString(i), width = "100%",
-        shiny::textOutput("Hello there")))
-      return(boxes)
-    }
-
     output$ui_boxes <- shiny::renderUI(
-      databox(1:100)
+        databoxes(server$tables)
+    )
+
+    output$ui_empty_box <- shiny::renderUI(
+      shinydashboard::box(
+        id = ns("empty_box"), title = paste("New", title), width = "100%",
+        fileInput(ns("upload"), "Upload a file"))
     )
 
   })

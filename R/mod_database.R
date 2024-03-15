@@ -86,7 +86,7 @@ mod_database_server <- function(id, r, txt) {
         acc["password"] <- getElement(ENV, paste0(acc["user"], "_db_password"))
       }
 
-      print(acc)
+      # print(acc)
 
       return(acc)
     }
@@ -208,7 +208,11 @@ mod_database_server <- function(id, r, txt) {
 
       # Connect selected database type
       server$db = connect(dbms = input$dbtype, access = acc)
+    })
 
+    # Share db with other modules when changed
+    observeEvent(server, {
+      r$mod_database$db <- server$db
     })
 
     ### UI Elements
@@ -312,7 +316,7 @@ mod_database_server <- function(id, r, txt) {
     # List of database schemas
     output$ui_schemas <- renderText(paste(database.schemas(server$db), collapse=", "))
 
-    # DAtabase searchpath
+    # Database searchpath
     output$ui_searchpath <- renderText(gsub('"user', paste0("user:", server$db@user), database.searchpath(server$db)))
 
     # Tabbox for database properties
