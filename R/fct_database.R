@@ -51,8 +51,8 @@ setClass("SQLite",
 setClass("Data",
          slots = c(
            name = "character",
-           size = "character",
-           path = "character"
+           path = "character",
+           size = "character"
          ),
          prototype = list(
            name = NA_character_,
@@ -278,32 +278,95 @@ setMethod("user.tables",
 
 # Write table
 
-setGeneric("write.dbtable", function(d, name, df) standardGeneric("write.dbtable"))
+setGeneric("write.dbtable", function(d, name, df, dtype) standardGeneric("write.dbtable"))
 
 setMethod("write.dbtable",
           methods::signature(d = "PostgreSQL"),
-          function(d, name, df){
-            DBI::dbWriteTable(d@con, name, df)
+          function(d, name, df, dtype){
+            # Add entry to primyry table
+            if (!(name %in% user.tables(d)$tablename)) {
+              DBI::dbAppendTable(d@con, "primary_table", value = data.frame(name = name, datatype = dtype))
+            }
+            # Write Table
+            DBI::dbWriteTable(d@con, name, df, overwrite = TRUE)
           })
 
 setMethod("write.dbtable",
           methods::signature(d = "SQLite"),
-          function(d, name, df){
-            DBI::dbWriteTable(d@con, name, df)
+          function(d, name, df, dtype){
+            if (!(name %in% d@usertables$tablename)) {
+              DBI::dbAppendTable(d@con, "primary_table", value = data.frame(name = name, datatype = dtype))
+            }
+            DBI::dbWriteTable(d@con, name, df, overwrite = TRUE)
           })
 
 # Delete table
 
-setGeneric("delete.dbtable", function(d, name, df) standardGeneric("delete.dbtable"))
+setGeneric("delete.dbtable", function(d, name, df, dtype) standardGeneric("delete.dbtable"))
 
 setMethod("delete.dbtable",
           methods::signature(d = "PostgreSQL"),
-          function(d, name, df){
+          function(d, name, df, dtype){
+            sql = paste0(r"(DELETE FROM) primary_table USING data WHERE data = )", name, r"(;)")
+
+            print(sql)
+
             DBI::dbRemoveTable(d@con, name)
+            DBI::dbExecute(d@con, sql)
           })
 
 setMethod("delete.dbtable",
           methods::signature(d = "SQLite"),
-          function(d, name, df){
+          function(d, name, df, dtype){
             DBI::dbRemoveTable(d@con, name)
           })
+
+
+# Create primary table
+
+setGeneric("create.primarytable", function(d, user) standardGeneric("create.primarytable"))
+
+setMethod("create.primarytable",
+          methods::signature(d = "PostgreSQL"),
+          function(d, user){
+            sql = r"(
+              CREATE TABLE primary_table (
+                  key            serial primary key,
+                  name           VARCHAR(40) not null,
+                  datatype       VARCHAR(40) not null
+              );
+            )"
+            DBI::dbExecute(d@con, sql)
+          })
+
+setMethod("create.primarytable",
+          methods::signature(d = "SQLite"),
+          function(d, user){
+            sql = r"(
+              CREATE TABLE primary_table (
+              key INTEGER PRIMARY KEY  AUTOINCREMENT,
+              name           CHAR(40)  NOT NULL,
+              datatype       CHAR(40)  NOT NULL
+              );
+            )"
+            DBI::dbExecute(d@con, sql)
+          })
+
+# Get table
+
+setGeneric("get.table", function(d, tablename) standardGeneric("get.table"))
+
+setMethod("get.table",
+          methods::signature(d = "PostgreSQL"),
+          function(d, tablename){
+            table = DBI::dbReadTable(d@con, name = tablename)
+            return(table)
+          })
+
+setMethod("get.table",
+          methods::signature(d = "SQLite"),
+          function(d, tablename){
+            table = DBI::dbReadTable(d@con, name = tablename)
+            return(table)
+          })
+

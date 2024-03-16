@@ -1,7 +1,7 @@
 server:
   forward-headers-strategy: native
 proxy:
-  title: ShinyProxy
+  title: Shiny Proxy
 #  logo-url: https://link/to/your/logo.png
   landing-page: /
   favicon-path: favicon.ico
@@ -14,7 +14,7 @@ proxy:
   users:
     - name: ${USER1NAME}
       password: ${USER1PASSWORD}
-      groups: [ admin, user ]
+      groups: [ admins, user ]
     - name: ${USER2NAME}
       password: ${USER2PASSWORD}
       groups: [ user ]
@@ -30,7 +30,7 @@ proxy:
       container-cmd: ["R", "-e", "PCApp::run_app()"]
       container-image: justusweyers/pcapp:latest
       container-network-connections: [ "app_network" ]
-      access-groups: [ admin]
+      access-groups: [ user ]
       container-env-file: .env
 
 logging:

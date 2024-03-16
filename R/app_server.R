@@ -32,5 +32,6 @@ app_server <- function(input, output, session) {
   mod_database_server("database_tab", r, txt)
   mod_ENV_server("ENV_1")
 
-  mod_import_server("import_timeseries", r, txt, title = txt[25])
+  mod_import_server("import_timeseries", r, txt, dtype = txt[25])
+  mod_import_server("import_metadata", r, txt, dtype = "Metadata")
 }

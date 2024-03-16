@@ -94,7 +94,7 @@ mod_database_server <- function(id, r, txt) {
     # Initial connection routine
     init_connect = function(access) {
 
-      # By default test postgress connection
+      # By default test postgres connection
       tryCatch({
 
         # Connect as superuser
@@ -132,6 +132,11 @@ mod_database_server <- function(id, r, txt) {
             dbname = getElement(access, "dbname")
           )
         )
+
+        # Create primary key table
+        if (!("primary_table" %in% user.tables(db)$tablename)) {
+          create.primarytable(db, user = getElement(access, "user"))
+        }
 
         return(db)
 
