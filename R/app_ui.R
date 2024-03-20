@@ -32,7 +32,6 @@ app_ui <- function(request) {
             tabName = "import", shiny::tabsetPanel(
               type = "tabs",
               mod_import_ui("import_timeseries"),
-              mod_import_ui("import_metadata")
             )
           ),
 

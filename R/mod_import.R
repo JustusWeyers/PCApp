@@ -15,13 +15,9 @@ mod_import_ui <- function(id){
   shiny::tabPanel(
     shiny::uiOutput(ns("ui_tab_title")),
     shiny::tagList(
-      shiny::fluidPage(
-        # Body
-        h1("H1"),
-        shiny::fluidRow(
-          shiny::uiOutput(ns("ui_boxes")),
-          shiny::uiOutput(ns("ui_empty_box"))
-        )
+      fluidPage(
+        uiOutput(ns("boxArray")),
+        shiny::uiOutput(ns("ui_empty_box"))
       )
     )
   )
@@ -29,63 +25,92 @@ mod_import_ui <- function(id){
 
 #' import Server Functions
 #'
-#' @importFrom purrr lmap
+#' @importFrom purrr lmap map
 #' @importFrom utils read.csv
 #' @noRd
 mod_import_server <- function(id, r, txt, dtype){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-    databoxes = function(tables) {
-      boxes = purrr::lmap(tables, function(name) shinydashboard::box(
-        id = ns(paste0("box_", name)), title = name, width = "100%",
-        collapsible = TRUE, collapsed = TRUE,
-        actionButton(ns(paste0("delete_", name)), "Delete")
-        ))
-      return(boxes)
-    }
-
-    # Server code
-
-    # Servers reactive values
-    server = reactiveValues(
+    ### Servers reactive values
+    dataserver = reactiveValues(
       primary_table = NULL,
-      data = NULL
+      tables = NULL,
+      boxes = NULL,
+      delete = c()
     )
 
-    # Import data
+    ### Server logic
+
+    # On upload
     observeEvent(ns(input$upload), {
+
+      print("Upload Event")
+
       if (!is.null(input$upload)) {
         # Extract name
         name = tools::file_path_sans_ext(input$upload$name)
-        # Read file (Todo)
+        # Read file (Todo: depending on different files and user parameters)
         df = read.csv(input$upload$datapath)
+        # Combine table name as pair of data name and datatype
+        tablename = paste0(name, "_", dtype)
         # Write to database and create entry in database primary table
-        write.dbtable(r$mod_database$db, name = name, df = df, dtype = dtype)
+        write.dbtable(r$mod_database$db, name = tablename, df = df, dtype = dtype)
       }
 
       # Update primary table
-      server$primary_table = get.table(r$mod_database$db, tablename = "primary_table")
-      # Tables corresponding to modules datatype
-      server$data = server$primary_table[server$primary_table$datatype == dtype,]
+      dataserver$primary_table = get.table(r$mod_database$db, tablename = "primary_table")
 
-      print(server$primary_table)
 
     })
 
-    # UI Elements
+    # On changes in dataserver$primarytable
+    observeEvent(dataserver$primary_table, {
 
+      print("Change in dataserver$primarytable")
+      print(dataserver$primary_table)
+
+      # Update tables corresponding to modules datatype
+      dataserver$tables = dataserver$primary_table[dataserver$primary_table$datatype == dtype,]
+
+      # Update box objects
+      dataserver$boxes = lapply(dataserver$tables$name, function(n) new(dtype, name = as.character(n)))
+
+      # Call box server on box objects
+      lapply(dataserver$boxes, function(x) boxServer(x, dataserver))
+    })
+
+    observeEvent(dataserver$delete, {
+
+      print(paste("Delete:", dataserver$delete))
+
+      # DBI DELETION
+      lapply(dataserver$delete, function(n) delete.dbtable(r$mod_database$db, n))
+      # Clear queue
+      dataserver$delete <-  c()
+
+      # Update primary_table
+      dataserver$primary_table = get.table(r$mod_database$db, tablename = "primary_table")
+
+    })
+
+    ### UI Elements
+
+    # Render tab title
     output$ui_tab_title <- shiny::renderUI({
       shiny::renderText(dtype)
     })
 
-    output$ui_boxes <- shiny::renderUI(
-      databoxes(server$data$name)
-    )
+    # Call box ui
+    output$boxArray = renderUI(lapply(dataserver$boxes, function(b) {
+      b@name <- ns(b@name) # Important
+      boxUI(b)()
+    }))
+
 
     output$ui_empty_box <- shiny::renderUI(
       shinydashboard::box(
-        id = ns("empty_box"), title = paste("New", dtype), width = "100%",
+        id = ns("empty_box"), title = paste("New", dtype), width = 12,
         fileInput(ns("upload"), "Upload a file"))
     )
 

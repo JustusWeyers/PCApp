@@ -27,10 +27,10 @@ golem::add_module(name = "ENV") # Name of the module
 golem::add_module(name = "import") # Name of the module
 golem::add_module(name = "databox") # Name of the module
 
-
 ## Add helper functions ----
 ## Creates fct_* and utils_*
 golem::add_fct("database")
+golem::add_fct("data")
 
 golem::add_utils("connect_database")
 golem::add_utils("render_sidebar")
