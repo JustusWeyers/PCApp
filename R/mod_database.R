@@ -64,9 +64,9 @@ mod_database_server <- function(id, r, txt) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    ### Functions
+    # Functions
 
-    # Fetch credentials from environment
+    ## Fetch credentials from environment
     fetch_credentials = function(ENV = shiny::isolate(r$ENV), acc = internal$acc) {
 
       # Check if alternatively host is available from env
@@ -91,7 +91,7 @@ mod_database_server <- function(id, r, txt) {
       return(acc)
     }
 
-    # Initial connection routine
+    ## Initial connection routine
     init_connect = function(access) {
 
       # By default test postgres connection
@@ -144,13 +144,18 @@ mod_database_server <- function(id, r, txt) {
 
       # If postgres connection failes return SQLite connection
       error = function(e) {
-        print(e)
-        return(connect.database(new("SQLite")))
+        db = connect.database(new("SQLite"))
+        # Create primary key table
+        print(user.tables(db))
+        if (!("primary_table" %in% user.tables(db)$tablename)) {
+          create.primarytable(db, user = getElement(access, "user"))
+        }
+        return(db)
       })
 
     }
 
-    # Ordinary database connection routine
+    ## Ordinary database connection routine
     connect = function(dbms, access) {
 
       if (dbms == "RPostgres") {
@@ -174,27 +179,22 @@ mod_database_server <- function(id, r, txt) {
       }
     }
 
-    ### Serverlogic
+    # Serverlogic
 
-    # Fetch database access
+    ## Fetch database access
     database_access = fetch_credentials()
 
-    # Module servers global variables
+    ## Module servers global variables
     server = shiny::reactiveValues(
-
       # Supported database types
       database_types = c(PostgreSQL = "RPostgres", SQLite = "RSQLite"),
-
       database_access = database_access,
-
       # Initially try Postgres connection as superuser
       db = init_connect(access = database_access)
-
     )
 
-    # Connect to database functionality
+    ## Connect to database
     shiny::observeEvent(input$dbtype, {
-
       # Eventually fetch user defined database access parameters
       if (all(shiny::isTruthy(c(input$host, input$user, input$password,
                                 input$port, input$dbname)))) {
@@ -207,12 +207,11 @@ mod_database_server <- function(id, r, txt) {
       } else {
         acc = server$database_access
       }
-
       # At first disconnect
       DBI::dbDisconnect(server$db@con)
-
       # Connect selected database type
       server$db = connect(dbms = input$dbtype, access = acc)
+      r$mod_database$db <- server$db
     })
 
     # Share db with other modules when changed
@@ -315,7 +314,7 @@ mod_database_server <- function(id, r, txt) {
 
     # Table of database tables
     output$ui_tables <- shiny::renderUI({
-      DT::renderDataTable(database.tables(server$db), options = list(scrollX = TRUE))
+      DT::renderDataTable(database.tables(r$mod_database$db), options = list(scrollX = TRUE))
     })
 
     # List of database schemas

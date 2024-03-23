@@ -7,6 +7,7 @@
 #' @importFrom shiny NS tagList uiOutput moduleServer renderUI actionButton
 #' @importFrom shinydashboard box
 #' @importFrom methods signature
+#' @importFrom utils read.csv
 #'
 #' @noRd
 
@@ -15,13 +16,21 @@
 setClass("Data",
          slots = c(
            name = "character",
-           path = "character",
+           filename = "character",
+           filepath = "character",
+           displayName = "character",
+           dataType = "character",
+           filetype = "character",
            size = "character"
          ),
          prototype = list(
            name = NA_character_,
-           size = NA_character_,
-           path = NA_character_
+           filename = NA_character_,
+           filepath = NA_character_,
+           displayName = NA_character_,
+           dataType = NA_character_,
+           filetype = NA_character_,
+           size = NA_character_
          ))
 
 ## Timeseries
@@ -29,10 +38,7 @@ setClass("Data",
 setClass("Timeseries",
          contains = "Data",
          slots = c(
-           nrow = "character"
-         ),
-         prototype = list(
-           nrow = NA_character_
+           nrow = "numeric"
          )
 )
 
@@ -74,6 +80,21 @@ setClass("RasterData",
 
 # Generics and methodes
 
+## Read data
+
+setGeneric("read.data", function(obj) standardGeneric("read.data"))
+
+setMethod("read.data",
+          methods::signature(obj = "Timeseries"),
+          function (obj) {
+            if (obj@filetype == "csv") {
+              df = read.csv(obj@filepath)
+              obj@nrow <- nrow(df)
+              return(df)
+            }
+
+          })
+
 ## Generate a box UI ...
 
 setGeneric("boxUI", function(obj) standardGeneric("boxUI"))
@@ -107,23 +128,32 @@ setMethod("boxUI",
 
 ### ... for Timeseries
 
-setGeneric("boxServer", function(obj, dataserver) standardGeneric("boxServer"))
+setGeneric("boxServer", function(obj, dataserver, txt) standardGeneric("boxServer"))
 
 setMethod("boxServer",
           methods::signature(obj = "Timeseries"),
-          definition = function(obj, dataserver) {
+          definition = function(obj, dataserver, txt) {
             server <- shiny::moduleServer(obj@name, function(input, output, session) {
               ns <- session$ns
 
               ####
 
+              # Generate a random name for button.
+              randomName = paste(sample(letters, 10), collapse = "")
+
+              getInputs <- function(pattern){
+                reactives <- names(reactiveValuesToList(input))
+                reactives[grep(pattern,reactives)]
+              }
+
               # Create delete Button
               output$ui_delete_button <- shiny::renderUI(
-                shiny::actionButton(ns("button"), label = "Click me")
+                shiny::actionButton(ns(randomName), label = txt[32])
               )
 
               # Observe Delete button
-              observeEvent(input$button, {
+              observeEvent(input[[randomName]], {
+                print(paste("Button delete", obj@name, "pressed"))
                 # Add data to delete queue
                 dataserver$delete <- append(dataserver$delete, obj@name)
               })

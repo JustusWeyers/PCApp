@@ -7,7 +7,7 @@
 #' @importFrom RPostgres Postgres
 #' @importFrom RSQLite SQLite
 #' @importFrom DBI dbCanConnect dbConnect dbGetQuery dbExecute dbWriteTable
-#' @importFrom DBI dbReadTable dbAppendTable dbDeleteTable
+#' @importFrom DBI dbReadTable dbAppendTable dbDeleteTable dbListTables
 #' @importFrom methods signature
 #'
 #' @noRd
@@ -16,24 +16,7 @@
 
 setClass("Database",
          slots = c(
-           host = "character",
-           port = "character",
-           user = "character",
-           password = "character",
-           dbname = "character",
-
-           users = "data.frame",
-           schemas = "data.frame",
-           tables = "data.frame",
-           searchpath = "data.frame",
-           usertables = "data.frame"
-         ),
-         prototype = list(
-           host = NA_character_,
-           port = NA_character_,
-           user = NA_character_,
-           password = NA_character_,
-           dbname = NA_character_
+           tables = "data.frame"
          ))
 
 ## Postgres database class
@@ -41,7 +24,22 @@ setClass("Database",
 setClass("PostgreSQL",
          contains = "Database",
          slots = list(
-           con = "PqConnection"
+           con = "PqConnection",
+           host = "character",
+           port = "character",
+           user = "character",
+           password = "character",
+           dbname = "character",
+           users = "data.frame",
+           schemas = "data.frame",
+           searchpath = "data.frame",
+           usertables = "data.frame"
+         ), prototype = list(
+           host = NA_character_,
+           port = NA_character_,
+           user = NA_character_,
+           password = NA_character_,
+           dbname = NA_character_
          ))
 
 ## SQLite database class
@@ -86,6 +84,8 @@ setMethod("connect.database",
               )
               return(d)
             }
+            # Important: causes try catch to fail
+            stop("Connection to postgres not possible")
           })
 
 setMethod("connect.database",
@@ -124,8 +124,8 @@ setMethod("database.users",
 setMethod("database.users",
           methods::signature(d = "SQLite"),
           function(d) {
-            # Return prototype value
-            return(d@users)
+            # Doing nothing
+            return(data.frame())
           })
 
 ## Get tables
@@ -149,10 +149,8 @@ setMethod("database.tables",
 setMethod("database.tables",
           methods::signature(d = "SQLite"),
           function(d) {
-            # SQL query
-            sql <- r"(SELECT * FROM sqlite_temp_master WHERE type='table';)"
-            # Perform query and return result
-            d@tables <- DBI::dbGetQuery(d@con, sql)
+            # Run query and return result
+            d@tables = data.frame(tablename = DBI::dbListTables(d@con))
             return(d@tables)
           })
 
@@ -268,11 +266,9 @@ setMethod("user.tables",
 setMethod("user.tables",
           methods::signature(d = "SQLite"),
           function(d){
-            # SQL query
-            sql = r"(tables)"
             # Run query and return result
-            d@usertables <- DBI::dbGetQuery(d@con, sql)
-            return(d@usertables)
+            d@tables = data.frame(tablename = DBI::dbListTables(d@con))
+            return(d@tables)
           })
 
 # Write table
@@ -285,23 +281,24 @@ setMethod("write.dbtable",
           methods::signature(d = "PostgreSQL"),
           function(d, name, df, dtype){
             # Eventually add entry to primyary table
-            if (!(tablename %in% user.tables(d)$tablename)) {
+            if (!(name %in% user.tables(d)$tablename)) {
               DBI::dbAppendTable(d@con, "primary_table",
                                  value =
                                    data.frame(
-                                     name = tablename,
+                                     name = name,
                                      datatype = dtype)
                                  )
             }
             # (Over-) write Table
-            DBI::dbWriteTable(d@con, tablename, df, overwrite = TRUE)
+            DBI::dbWriteTable(d@con, name, df, overwrite = TRUE)
           })
 
 setMethod("write.dbtable",
           methods::signature(d = "SQLite"),
           function(d, name, df, dtype){
+            print(DBI::dbIsValid(d@con))
             # Eventually add entry to primyary table
-            if (!(name %in% d@usertables$tablename)) {
+            if (!(name %in% d@tables$tablename)) {
               DBI::dbAppendTable(d@con, "primary_table",
                                  value =
                                    data.frame(
@@ -362,6 +359,7 @@ setMethod("create.primarytable",
 setMethod("create.primarytable",
           methods::signature(d = "SQLite"),
           function(d, user){
+            print("Create SQL primary_table")
             # SQL command
             sql = r"(
               CREATE TABLE primary_table (

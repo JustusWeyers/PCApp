@@ -22,28 +22,28 @@ jobs:
         run:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/pcapp:latest
 
-  deploy_webapp:
-    needs: [publish_image]
-    runs-on: self-hosted
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-      - name: set application
-        run: echo '${{ secrets.SUDO }}' | sudo -S cp application.yml /etc/shinyproxy/application.yml
-      - name: request application properties
-        run: echo '${{ secrets.SUDO }}' | sudo -S echo '${{ secrets.APPLICATION_PROPERTIES }}' > application.properties\
-      - name: write application properties
-        run: echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties
-      - name: request container environment
-        run: echo '${{ secrets.SUDO }}' | sudo -S echo '${{ secrets.ENV }}' > .env
-      - name: write application environment
-        run: echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env
-      - name: file permission
-        run: >
-          echo '${{ secrets.SUDO }}' | sudo -S chown root /etc/shinyproxy/.env /etc/shinyproxy/application.properties
-      - name: pull webapp
-        run: echo '${{ secrets.SUDO }}' | sudo -S docker pull justusweyers/pcapp:latest
-      - name: restart shinyproxy
-        run: echo '${{ secrets.SUDO }}' | sudo -S service shinyproxy restart
-      - name: clean up
-        run: history -c
+  # deploy_webapp:
+  #   needs: [publish_image]
+  #   runs-on: self-hosted
+  #   steps:
+  #     - name: checkout
+  #       uses: actions/checkout@v3
+  #     - name: set application
+  #       run: echo '${{ secrets.SUDO }}' | sudo -S cp application.yml /etc/shinyproxy/application.yml
+  #     - name: request application properties
+  #       run: echo '${{ secrets.SUDO }}' | sudo -S echo '${{ secrets.APPLICATION_PROPERTIES }}' > application.properties\
+  #     - name: write application properties
+  #       run: echo '${{ secrets.SUDO }}' | sudo -S cp application.properties /etc/shinyproxy/application.properties
+  #     - name: request container environment
+  #       run: echo '${{ secrets.SUDO }}' | sudo -S echo '${{ secrets.ENV }}' > .env
+  #     - name: write application environment
+  #       run: echo '${{ secrets.SUDO }}' | sudo -S cp .env /etc/shinyproxy/.env
+  #     - name: file permission
+  #       run: >
+  #         echo '${{ secrets.SUDO }}' | sudo -S chown root /etc/shinyproxy/.env /etc/shinyproxy/application.properties
+  #     - name: pull webapp
+  #       run: echo '${{ secrets.SUDO }}' | sudo -S docker pull justusweyers/pcapp:latest
+  #     - name: restart shinyproxy
+  #       run: echo '${{ secrets.SUDO }}' | sudo -S service shinyproxy restart
+  #     - name: clean up
+  #       run: history -c
