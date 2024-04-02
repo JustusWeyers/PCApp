@@ -45,16 +45,25 @@ mod_import_server <- function(id, r, txt, dtype){
 
     # Modules central dataserver reactive values
     dataserver = shiny::reactiveValues(
-      primary_table = NULL,
       dataObjects = NULL,
-      tables = NULL,
       delete = c()
     )
 
     # Server logic
 
+    ## Update on changes in r$primary_table
+    observeEvent(r$primary_table, {
+      # Fetch modules data from primary_table
+      data = isolate(r$primary_table[r$primary_table$datatype == dtype,])
+      # Create dataObjects from primarytables data
+      dataserver$dataObjects = pmap(data, function(key, name, datatype) new(dtype, name = name, dataType = datatype))
+      # Call box servers
+      lapply(dataserver$dataObjects, function(o) boxServer(o, dataserver, txt = txt))
+    })
+
     ## On upload
     shiny::observeEvent(ns(input$upload), {
+      print("Upload")
       # Check if file is available
       if (!is.null(input$upload)) {
         # Fetch filename
@@ -77,41 +86,24 @@ mod_import_server <- function(id, r, txt, dtype){
           dataType = dtype,
           filetype = filetype
         )
-        # Append new data object to dataserver$dataObjects
-        dataserver$dataObjects[[name]] <- newDataObject
-        print(dataserver$dataObjects)
         # Read in data
         data = read.data(newDataObject)
         # Write to database and create entry in database primary table
-        write.dbtable(r$mod_database$db, name = name, df = data, dtype = dtype)
+        write.dbtable(r$db, name = name, df = data, dtype = dtype)
       }
       # Update primary table
-      dataserver$primary_table = get.table(r$mod_database$db, tablename = "primary_table")
-    })
-
-    ## On changes in dataserver$primary_table
-    shiny::observeEvent(dataserver$primary_table, {
-      print("Primary table:")
-      print(dataserver$primary_table)
-      # Update tables corresponding to modules datatype
-      dataserver$tables = dataserver$primary_table[dataserver$primary_table$datatype == dtype,]
-      ### Update box objects
-      ### dataserver$boxes = lapply(dataserver$tables$name, function(n) methods::new(dtype, name = as.character(n)))
-      # Call box server on box objects
-      lapply(dataserver$dataObjects, function(o) boxServer(o, dataserver, txt = txt))
+      r$primary_table = get.table(r$db, tablename = "primary_table")
     })
 
     ## On changes in dataserver$delete
     shiny::observeEvent(dataserver$delete, {
       print("Delete")
       # Delete elements from database
-      lapply(dataserver$delete, function(name) delete.dbtable(r$mod_database$db, name))
-      # Delete data Object from dataserver$dataObjects
-      dataserver$dataObjects <- dataserver$dataObjects[!(names(dataserver$dataObjects) %in% dataserver$delete)]
+      lapply(dataserver$delete, function(name) delete.dbtable(r$db, name))
+      # Update primary_table
+      r$primary_table = get.table(r$db, tablename = "primary_table")
       # Clear queue
       dataserver$delete <-  c()
-      # Update primary_table
-      dataserver$primary_table = get.table(r$mod_database$db, tablename = "primary_table")
     })
 
     # UI Elements
@@ -122,10 +114,13 @@ mod_import_server <- function(id, r, txt, dtype){
     })
 
     ## Call box ui
-    output$boxArray = renderUI(lapply(dataserver$dataObjects, function(d) {
-      d@name <- ns(d@name) # Important
-      boxUI(d)()
-    }))
+    observeEvent(c(r$db, r$primary_table), {
+      output$boxArray <- renderUI(NULL)
+      output$boxArray = renderUI(lapply(dataserver$dataObjects, function(d) {
+        d@name <- ns(d@name) # Important
+        boxUI(d)()
+      }))
+    })
 
     ## Upload box
     output$ui_empty_box <- shiny::renderUI(

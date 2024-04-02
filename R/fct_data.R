@@ -42,6 +42,15 @@ setClass("Timeseries",
          )
 )
 
+## Timeseries
+
+setClass("Metadata",
+         contains = "Data",
+         slots = c(
+           nrow = "numeric"
+         )
+)
+
 ## Geospatial data
 
 setClass("GeoSpatialData",
@@ -95,6 +104,17 @@ setMethod("read.data",
 
           })
 
+setMethod("read.data",
+          methods::signature(obj = "Metadata"),
+          function (obj) {
+            if (obj@filetype == "csv") {
+              df = read.csv(obj@filepath)
+              obj@nrow <- nrow(df)
+              return(df)
+            }
+
+          })
+
 ## Generate a box UI ...
 
 setGeneric("boxUI", function(obj) standardGeneric("boxUI"))
@@ -103,6 +123,31 @@ setGeneric("boxUI", function(obj) standardGeneric("boxUI"))
 
 setMethod("boxUI",
           methods::signature(obj = "Timeseries"),
+          function (obj) {
+            ui = function(id = obj@name) {
+              ns <- NS(id)
+              shiny::tagList(
+
+                ####
+
+                # The displayed box
+                shinydashboard::box(
+                  id = "box", title = obj@name, width = 12,
+                  # DeleteButton
+                  shiny::uiOutput(ns("ui_delete_button"))
+                )
+
+                ####
+
+              )
+            }
+            return(ui)
+          })
+
+### ... for Metadata
+
+setMethod("boxUI",
+          methods::signature(obj = "Metadata"),
           function (obj) {
             ui = function(id = obj@name) {
               ns <- NS(id)
@@ -153,7 +198,6 @@ setMethod("boxServer",
 
               # Observe Delete button
               observeEvent(input[[randomName]], {
-                print(paste("Button delete", obj@name, "pressed"))
                 # Add data to delete queue
                 dataserver$delete <- append(dataserver$delete, obj@name)
               })
@@ -164,6 +208,39 @@ setMethod("boxServer",
             return(server)
           })
 
-### ... for metadata
 
-# in the making
+
+### ... for Metadata
+
+setMethod("boxServer",
+          methods::signature(obj = "Metadata"),
+          definition = function(obj, dataserver, txt) {
+            server <- shiny::moduleServer(obj@name, function(input, output, session) {
+              ns <- session$ns
+
+              ####
+
+              # Generate a random name for button.
+              randomName = paste(sample(letters, 10), collapse = "")
+
+              getInputs <- function(pattern){
+                reactives <- names(reactiveValuesToList(input))
+                reactives[grep(pattern,reactives)]
+              }
+
+              # Create delete Button
+              output$ui_delete_button <- shiny::renderUI(
+                shiny::actionButton(ns(randomName), label = txt[32])
+              )
+
+              # Observe Delete button
+              observeEvent(input[[randomName]], {
+                # Add data to delete queue
+                dataserver$delete <- append(dataserver$delete, obj@name)
+              })
+
+              ####
+
+            })
+            return(server)
+          })

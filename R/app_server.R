@@ -9,7 +9,8 @@
 app_server <- function(input, output, session) {
   # Application server logic
 
-  # Global reactive values
+  # Global reactive values. See
+  # https://engineering-shiny.org/structuring-project.html#communication-between-modules
   r <- shiny::reactiveValues()
 
   # Read environment
@@ -25,7 +26,7 @@ app_server <- function(input, output, session) {
     txt <- internal$apptext[[lang]]
   }
 
-  # Render sidebar menu based on txt elements
+  # Render sidebar menu
   output$sidebarmenu <- render_sidebar(apptext = txt[c(29, 1)])
 
   # Modular code
@@ -33,4 +34,5 @@ app_server <- function(input, output, session) {
   mod_ENV_server("ENV_1")
 
   mod_import_server("import_timeseries", r, txt, dtype = txt[25])
+  mod_import_server("import_metadata", r, txt, dtype = txt[26])
 }

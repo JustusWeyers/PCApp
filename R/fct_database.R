@@ -16,7 +16,9 @@
 
 setClass("Database",
          slots = c(
-           tables = "data.frame"
+           tables = "data.frame",
+           searchpath = "data.frame",
+           user = "character"
          ))
 
 ## Postgres database class
@@ -27,12 +29,10 @@ setClass("PostgreSQL",
            con = "PqConnection",
            host = "character",
            port = "character",
-           user = "character",
            password = "character",
            dbname = "character",
            users = "data.frame",
            schemas = "data.frame",
-           searchpath = "data.frame",
            usertables = "data.frame"
          ), prototype = list(
            host = NA_character_,
@@ -72,7 +72,7 @@ setMethod("connect.database",
               port = d@port,
               dbname = d@dbname
             )
-            # If connection to database is possible connect and return con
+            # If connection to database is possible connect
             if (con_check == TRUE) {
               d@con <- DBI::dbConnect(
                 RPostgres::Postgres(),
@@ -82,6 +82,11 @@ setMethod("connect.database",
                 port = d@port,
                 dbname = d@dbname
               )
+              # Eventually create primary_table
+              if (!("primary_table" %in% user.tables(d)$tablename)) {
+                create.primarytable(d, user = d@user)
+              }
+              # Return
               return(d)
             }
             # Important: causes try catch to fail
@@ -101,6 +106,10 @@ setMethod("connect.database",
               RSQLite::SQLite(),
               file.path(extdata_path, "sqlite.db")
             )
+            # Eventually create primary_table
+            if (!("primary_table" %in% user.tables(d)$tablename)) {
+              create.primarytable(d, user = NA)
+            }
             return(d)
           })
 
@@ -296,7 +305,6 @@ setMethod("write.dbtable",
 setMethod("write.dbtable",
           methods::signature(d = "SQLite"),
           function(d, name, df, dtype){
-            print(DBI::dbIsValid(d@con))
             # Eventually add entry to primyary table
             if (!(name %in% d@tables$tablename)) {
               DBI::dbAppendTable(d@con, "primary_table",
@@ -331,6 +339,9 @@ setMethod("delete.dbtable",
           function(d, name){
             # Remove table
             DBI::dbRemoveTable(d@con, name)
+            # SQL comand to remove table row from primary table
+            sql = paste0(r"(DELETE FROM primary_table WHERE name = ')", name, r"(';)")
+            DBI::dbExecute(d@con, sql)
           })
 
 
@@ -359,7 +370,6 @@ setMethod("create.primarytable",
 setMethod("create.primarytable",
           methods::signature(d = "SQLite"),
           function(d, user){
-            print("Create SQL primary_table")
             # SQL command
             sql = r"(
               CREATE TABLE primary_table (

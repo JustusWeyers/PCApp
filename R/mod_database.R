@@ -93,7 +93,6 @@ mod_database_server <- function(id, r, txt) {
 
     ## Initial connection routine
     init_connect = function(access) {
-
       # By default test postgres connection
       tryCatch({
 
@@ -133,23 +132,13 @@ mod_database_server <- function(id, r, txt) {
           )
         )
 
-        # Create primary key table
-        if (!("primary_table" %in% user.tables(db)$tablename)) {
-          create.primarytable(db, user = getElement(access, "user"))
-        }
-
+        # Return db object
         return(db)
-
       },
 
-      # If postgres connection failes return SQLite connection
+      # If postgres connection fails return SQLite connection
       error = function(e) {
         db = connect.database(new("SQLite"))
-        # Create primary key table
-        print(user.tables(db))
-        if (!("primary_table" %in% user.tables(db)$tablename)) {
-          create.primarytable(db, user = getElement(access, "user"))
-        }
         return(db)
       })
 
@@ -157,25 +146,28 @@ mod_database_server <- function(id, r, txt) {
 
     ## Ordinary database connection routine
     connect = function(dbms, access) {
-
+      # Check desired DBMS
       if (dbms == "RPostgres") {
         tryCatch({
-          connect.database(
+          db = connect.database(
             new("PostgreSQL",
-              host = getElement(access, "host"),
-              port = getElement(access, "port"),
-              user = getElement(access, "user"),
-              password = getElement(access, "password"),
-              dbname = getElement(access, "dbname")
+                host = getElement(access, "host"),
+                port = getElement(access, "port"),
+                user = getElement(access, "user"),
+                password = getElement(access, "password"),
+                dbname = getElement(access, "dbname")
+                )
             )
-          )
+          return(db)
         },
         error = function(e) {
-          return(connect.database(new("SQLite")))
+          db = connect.database(new("SQLite"))
+          return(db)
         })
 
       } else {
-        return(connect.database(new("SQLite")))
+        db = connect.database(new("SQLite"))
+        return(db)
       }
     }
 
@@ -188,8 +180,9 @@ mod_database_server <- function(id, r, txt) {
     server = shiny::reactiveValues(
       # Supported database types
       database_types = c(PostgreSQL = "RPostgres", SQLite = "RSQLite"),
+      # The reactive database access parameters
       database_access = database_access,
-      # Initially try Postgres connection as superuser
+      # Initial connection
       db = init_connect(access = database_access)
     )
 
@@ -211,12 +204,14 @@ mod_database_server <- function(id, r, txt) {
       DBI::dbDisconnect(server$db@con)
       # Connect selected database type
       server$db = connect(dbms = input$dbtype, access = acc)
-      r$mod_database$db <- server$db
     })
 
-    # Share db with other modules when changed
-    observeEvent(server, {
-      r$mod_database$db <- server$db
+    ## Globally share db and primarytable
+    observeEvent(server$db, {
+      # Share db object
+      r$db <- server$db
+      # Share primary_table
+      r$primary_table = get.table(server$db, tablename = "primary_table")
     })
 
     ### UI Elements
@@ -275,10 +270,12 @@ mod_database_server <- function(id, r, txt) {
     # Connection tabbox
     output$ui_connection_box <- shiny::renderUI(shinydashboard::tabBox(
         id = ns("connection_tabbox"), title = "", width = "100%",
+        # First tab
         shiny::tabPanel(
           txt[22],
           shiny::uiOutput(ns("ui_dbtype_radiobutton"))
         ),
+        # Second tab
         shiny::tabPanel(
           txt[15],
           shiny::fluidRow(
@@ -307,18 +304,20 @@ mod_database_server <- function(id, r, txt) {
       shiny::titlePanel(txt[19])
     })
 
-    # Table of database users
-    output$ui_users <- shiny::renderUI({
-      DT::renderDataTable(database.users(server$db), options = list(scrollX = TRUE))
-    })
+    observeEvent(r$db, {
+      # Table of database users
+      output$ui_users <- shiny::renderUI({
+        DT::renderDataTable(database.users(server$db), options = list(scrollX = TRUE))
+      })
 
-    # Table of database tables
-    output$ui_tables <- shiny::renderUI({
-      DT::renderDataTable(database.tables(r$mod_database$db), options = list(scrollX = TRUE))
-    })
+      # Table of database tables
+      output$ui_tables <- shiny::renderUI({
+        DT::renderDataTable(database.tables(r$db), options = list(scrollX = TRUE))
+      })
 
-    # List of database schemas
-    output$ui_schemas <- renderText(paste(database.schemas(server$db), collapse=", "))
+      # List of database schemas
+      output$ui_schemas <- renderText(paste(database.schemas(server$db), collapse=", "))
+    })
 
     # Database searchpath
     output$ui_searchpath <- renderText(gsub('"user', paste0("user:", server$db@user), database.searchpath(server$db)))
