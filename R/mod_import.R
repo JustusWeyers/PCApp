@@ -43,20 +43,52 @@ mod_import_server <- function(id, r, txt, dtype){
   shiny::moduleServer( id, function(input, output, session){
     ns <- session$ns
 
+
     # Modules central dataserver reactive values
     dataserver = shiny::reactiveValues(
       dataObjects = NULL,
       delete = c()
     )
 
+    # Functions
+    import = function(name, size, type, datapath, r, dtype) {
+      # Extract name for display
+      display_name = tools::file_path_sans_ext(name)
+      # Combine working name as pair of displayName and datatype
+      working_name = paste0(display_name, "_", dtype)
+      # File extension
+      ext = tools::file_ext(name)
+      # Create new upload data object
+      newDataObject = methods::new(
+        dtype,
+        dtype = dtype,
+        name = working_name,
+        filename = name,
+        displayname = display_name,
+        filepath = datapath,
+        filetype = type,
+        filesize = size,
+        fileext = ext
+      )
+      # Read in data
+      data = read.data(newDataObject)
+      # Write data
+      write.data(r$db, newDataObject, data = data)
+    }
+
     # Server logic
 
     ## Update on changes in r$primary_table
     observeEvent(r$primary_table, {
+      print(r$primary_table)
       # Fetch modules data from primary_table
-      data = isolate(r$primary_table[r$primary_table$datatype == dtype,])
+      data = isolate(r$primary_table[r$primary_table$dtype == dtype,])
       # Create dataObjects from primarytables data
-      dataserver$dataObjects = pmap(data, function(key, name, datatype) new(dtype, name = name, dataType = datatype))
+      dataserver$dataObjects = purrr::pmap(
+        data, function(key, name, dtype, displayname, filename, filetype,
+                       filesize, fileext)
+        new(dtype, name = name)
+      )
       # Call box servers
       lapply(dataserver$dataObjects, function(o) boxServer(o, dataserver, txt = txt))
     })
@@ -65,31 +97,8 @@ mod_import_server <- function(id, r, txt, dtype){
     shiny::observeEvent(ns(input$upload), {
       print("Upload")
       # Check if file is available
-      if (!is.null(input$upload)) {
-        # Fetch filename
-        filename = input$upload$name
-        # Fetch filepath
-        filepath = input$upload$datapath
-        # Extract name for display
-        displayName = tools::file_path_sans_ext(filename)
-        # Extract filetype
-        filetype = tools::file_ext(filename)
-        # Combine working name as pair of displayName and datatype
-        name = paste0(displayName, "_", dtype)
-        # Create Data object
-        newDataObject = methods::new(
-          dtype,
-          name = name,
-          filename = filename,
-          filepath = filepath,
-          displayName = displayName,
-          dataType = dtype,
-          filetype = filetype
-        )
-        # Read in data
-        data = read.data(newDataObject)
-        # Write to database and create entry in database primary table
-        write.dbtable(r$db, name = name, df = data, dtype = dtype)
+      if (any(!is.null(input$upload))) {
+        purrr::pmap(input$upload, import, r = r, dtype = dtype)
       }
       # Update primary table
       r$primary_table = get.table(r$db, tablename = "primary_table")
@@ -126,7 +135,7 @@ mod_import_server <- function(id, r, txt, dtype){
     output$ui_empty_box <- shiny::renderUI(
       shinydashboard::box(
         id = ns("empty_box"), title = paste("New", dtype), width = 12,
-        shiny::fileInput(ns("upload"), "Upload a file"))
+        shiny::fileInput(ns("upload"), "Upload a file", multiple = TRUE))
     )
 
   })

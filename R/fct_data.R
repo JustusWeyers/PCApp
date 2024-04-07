@@ -15,22 +15,22 @@
 
 setClass("Data",
          slots = c(
+           dtype = "character",
            name = "character",
            filename = "character",
+           displayname = "character",
            filepath = "character",
-           displayName = "character",
-           dataType = "character",
            filetype = "character",
-           size = "character"
+           filesize = "integer",
+           fileext = "character"
          ),
          prototype = list(
+           dtype = NA_character_,
            name = NA_character_,
            filename = NA_character_,
+           displayname = NA_character_,
            filepath = NA_character_,
-           displayName = NA_character_,
-           dataType = NA_character_,
-           filetype = NA_character_,
-           size = NA_character_
+           filetype = NA_character_
          ))
 
 ## Timeseries
@@ -96,7 +96,7 @@ setGeneric("read.data", function(obj) standardGeneric("read.data"))
 setMethod("read.data",
           methods::signature(obj = "Timeseries"),
           function (obj) {
-            if (obj@filetype == "csv") {
+            if (obj@fileext == "csv") {
               df = read.csv(obj@filepath)
               obj@nrow <- nrow(df)
               return(df)
@@ -107,7 +107,7 @@ setMethod("read.data",
 setMethod("read.data",
           methods::signature(obj = "Metadata"),
           function (obj) {
-            if (obj@filetype == "csv") {
+            if (obj@fileext == "csv") {
               df = read.csv(obj@filepath)
               obj@nrow <- nrow(df)
               return(df)

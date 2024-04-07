@@ -284,38 +284,48 @@ setMethod("user.tables",
 
 ## Write a table.
 
-setGeneric("write.dbtable", function(d, name, df, dtype) standardGeneric("write.dbtable"))
+setGeneric("write.data", function(d, dataObject, data) standardGeneric("write.data"))
 
-setMethod("write.dbtable",
+setMethod("write.data",
           methods::signature(d = "PostgreSQL"),
-          function(d, name, df, dtype){
+          function(d, dataObject, data){
             # Eventually add entry to primyary table
-            if (!(name %in% user.tables(d)$tablename)) {
+            if (!(dataObject@name %in% user.tables(d)$tablename)) {
               DBI::dbAppendTable(d@con, "primary_table",
                                  value =
                                    data.frame(
-                                     name = name,
-                                     datatype = dtype)
+                                     name        = dataObject@name,
+                                     dtype       = dataObject@dtype,
+                                     displayname = dataObject@displayname,
+                                     filename    = dataObject@filename,
+                                     filetype    = dataObject@filetype,
+                                     filesize    = dataObject@filesize,
+                                     fileext     = dataObject@fileext)
                                  )
             }
             # (Over-) write Table
-            DBI::dbWriteTable(d@con, name, df, overwrite = TRUE)
+            DBI::dbWriteTable(d@con, name = dataObject@name, value = data, overwrite = TRUE)
           })
 
-setMethod("write.dbtable",
+setMethod("write.data",
           methods::signature(d = "SQLite"),
-          function(d, name, df, dtype){
+          function(d, dataObject, data){
             # Eventually add entry to primyary table
-            if (!(name %in% d@tables$tablename)) {
+            if (!(dataObject@name %in% d@tables$tablename)) {
               DBI::dbAppendTable(d@con, "primary_table",
                                  value =
                                    data.frame(
-                                     name = name,
-                                     datatype = dtype)
+                                     name        = dataObject@name,
+                                     dtype       = dataObject@dtype,
+                                     displayname = dataObject@displayname,
+                                     filename    = dataObject@filename,
+                                     filetype    = dataObject@filetype,
+                                     filesize    = dataObject@filesize,
+                                     fileext     = dataObject@fileext)
                                  )
             }
             # (Over-) write table
-            DBI::dbWriteTable(d@con, name, df, overwrite = TRUE)
+            DBI::dbWriteTable(d@con, name = dataObject@name, value = data, overwrite = TRUE)
           })
 
 # Delete table
@@ -348,7 +358,7 @@ setMethod("delete.dbtable",
 ## Create primary table
 
 ### Special method to create primary table with columns "key", "name" and
-### "datatype". Every user has exactly one primary table.
+### "dtype". Every user has exactly one primary table.
 
 setGeneric("create.primarytable", function(d, user) standardGeneric("create.primarytable"))
 
@@ -360,12 +370,19 @@ setMethod("create.primarytable",
               CREATE TABLE primary_table (
                   key            serial primary key,
                   name           VARCHAR(40) not null,
-                  datatype       VARCHAR(40) not null
+                  dtype          VARCHAR(40) not null,
+                  displayName    VARCHAR(40),
+                  filename       VARCHAR(40),
+                  filetype       VARCHAR(40),
+                  filesize       VARCHAR(40),
+                  fileext        VARCHAR(40)
               );
             )"
             # Run command on database
             DBI::dbExecute(d@con, sql)
           })
+
+
 
 setMethod("create.primarytable",
           methods::signature(d = "SQLite"),
@@ -375,7 +392,12 @@ setMethod("create.primarytable",
               CREATE TABLE primary_table (
               key INTEGER PRIMARY KEY  AUTOINCREMENT,
               name           CHAR(40)  NOT NULL,
-              datatype       CHAR(40)  NOT NULL
+              dtype          CHAR(40)  NOT NULL,
+              displayname    CHAR(40),
+              filename       CHAR(40),
+              filetype       CHAR(40),
+              filesize       CHAR(40),
+              fileext        CHAR(40)
               );
             )"
             # Run command on database
