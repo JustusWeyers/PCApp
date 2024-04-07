@@ -8,4 +8,4 @@
 *.env
 shinyproxy-3.0.2.jar
 application.properties
-shinyproxy.log
+shinyproxy.log*
