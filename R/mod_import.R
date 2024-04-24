@@ -6,9 +6,9 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList tabPanel uiOutput fluidPage
+#' @importFrom shiny NS tagList tabPanel uiOutput fluidPage fluidRow
+#' @importFrom shiny actionButton textInput
 #' @importFrom tools file_path_sans_ext
-#'
 
 mod_import_ui <- function(id){
   ns <- NS(id)
@@ -20,10 +20,11 @@ mod_import_ui <- function(id){
     shiny::tagList(
       shiny::fluidPage(
         h1(),
-        # Array of boxes representing data
-        shiny::uiOutput(ns("boxArray")),
-        # Upload box
-        shiny::uiOutput(ns("ui_empty_box"))
+        # Array for data groups
+        shiny::uiOutput(ns("groupArray")),
+        # Add a group
+        shiny::textInput(ns("groupname"), "Group name"),
+        shiny::actionButton(ns("addgroup"), "Add group")
       )
     )
   )
@@ -33,86 +34,92 @@ mod_import_ui <- function(id){
 #'
 #' @importFrom shiny moduleServer reactiveValues observeEvent renderText
 #' @importFrom shiny renderUI fileInput
-#' @importFrom purrr lmap map
+#' @importFrom purrr lmap map pmap map_vec
 #' @importFrom utils read.csv
 #' @importFrom tools file_path_sans_ext
 #' @importFrom methods new
 #' @importFrom shinydashboard box
+#'
 #' @noRd
+
 mod_import_server <- function(id, r, txt, dtype){
   shiny::moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-
     # Modules central dataserver reactive values
     dataserver = shiny::reactiveValues(
-      dataObjects = NULL,
+      groupObjects = NULL,
       delete = c()
     )
-
-    # Functions
-    import = function(name, size, type, datapath, r, dtype) {
-      # Extract name for display
-      display_name = tools::file_path_sans_ext(name)
-      # Combine working name as pair of displayName and datatype
-      working_name = paste0(display_name, "_", dtype)
-      # File extension
-      ext = tools::file_ext(name)
-      # Create new upload data object
-      newDataObject = methods::new(
-        dtype,
-        dtype = dtype,
-        name = working_name,
-        filename = name,
-        displayname = display_name,
-        filepath = datapath,
-        filetype = type,
-        filesize = size,
-        fileext = ext
-      )
-      # Read in data
-      data = read.data(newDataObject)
-      # Write data
-      write.data(r$db, newDataObject, data = data)
-    }
 
     # Server logic
 
     ## Update on changes in r$primary_table
-    observeEvent(r$primary_table, {
+    shiny::observeEvent(c(r$primary_table, r$datagroup_table), {
       print(r$primary_table)
-      # Fetch modules data from primary_table
-      data = isolate(r$primary_table[r$primary_table$dtype == dtype,])
-      # Create dataObjects from primarytables data
-      dataserver$dataObjects = purrr::pmap(
-        data, function(key, name, dtype, displayname, filename, filetype,
-                       filesize, fileext)
-        new(dtype, name = name)
+      print(r$datagroup_table)
+
+      # Create data-objects from primarytables data
+      ## Fetch modules data from primary_table
+      data = r$primary_table[r$primary_table$dtype == dtype,]
+      ## Serial instantiation
+      dataObjects = purrr::pmap(
+        data, function(key, name, dtype, dgroup)
+        # Constructor
+        return(methods::new(dtype, key = key, name = name, dtype = dtype, dgroup = dgroup))
       )
-      # Call box servers
-      lapply(dataserver$dataObjects, function(o) boxServer(o, dataserver, txt = txt))
+
+      # Create group-objects from datagroup_table
+      ## Fetch modules groups from primary_table
+      groups = r$datagroup_table[r$datagroup_table$dtype == dtype,]
+      ## Serial instantiation
+      dataserver$groupObjects = purrr::pmap(
+        groups, function(key, name, dtype, color) {
+        # For each group fetch group data objects
+        groupdata = dataObjects[purrr::map_vec(dataObjects, function(o) o@dgroup == name)]
+        # Constructor
+        return(methods::new("Group", key = key, name = name, dtype = dtype, color = color, data = groupdata))
+      })
+
+      # Set names of dataserver groupData
+      names(dataserver$groupObjects) = purrr::map_vec(dataserver$groupObjects, function(group) group@name)
+
+      # Call group servers
+      lapply(dataserver$groupObjects, function(o) groupServer(o, r = r, dataserver = dataserver, txt = txt))
+
     })
 
-    ## On upload
-    shiny::observeEvent(ns(input$upload), {
-      print("Upload")
-      # Check if file is available
-      if (any(!is.null(input$upload))) {
-        purrr::pmap(input$upload, import, r = r, dtype = dtype)
-      }
-      # Update primary table
-      r$primary_table = get.table(r$db, tablename = "primary_table")
-    })
-
-    ## On changes in dataserver$delete
+    ## Delete group on changes in dataserver$delete
     shiny::observeEvent(dataserver$delete, {
-      print("Delete")
-      # Delete elements from database
-      lapply(dataserver$delete, function(name) delete.dbtable(r$db, name))
-      # Update primary_table
-      r$primary_table = get.table(r$db, tablename = "primary_table")
+      print("Delete Group")
+      # Iterate over delete queue
+      lapply(dataserver$delete, function(name) {
+        # Delete from database
+        delete.data(r$db, dataserver$groupObjects[[name]])
+        # Delete from groupdata
+        dataserver$groupObjects[name] <- NULL
+      })
       # Clear queue
-      dataserver$delete <-  c()
+      dataserver$delete <- c()
+    })
+
+    # Add Group
+    shiny::observeEvent(input$addgroup, {
+
+      # Check if group already exists
+      if (!(input$groupname %in% names(dataserver$groupObjects))) {
+        # Add entry to datagroup_table
+        appendto.table(r$db, table = "datagroup_table", values = data.frame(
+          name = input$groupname,
+          dtype = dtype,
+          color = "pink"
+        ))
+        # Update datagroup_table
+        r$datagroup_table = get.table(r$db, tablename = "datagroup_table")
+      } else {
+        print("Groupname already in use")
+      }
+
     })
 
     # UI Elements
@@ -122,22 +129,20 @@ mod_import_server <- function(id, r, txt, dtype){
       shiny::renderText(dtype)
     })
 
-    ## Call box ui
-    observeEvent(c(r$db, r$primary_table), {
-      output$boxArray <- renderUI(NULL)
-      output$boxArray = renderUI(lapply(dataserver$dataObjects, function(d) {
-        d@name <- ns(d@name) # Important
-        boxUI(d)()
-      }))
+    ## Render group boxes
+    shiny::observeEvent(r$datagroup_table, {
+      # Clear ui
+      output$groupArray <- shiny::renderUI(NULL)
+      # Iterate over groupObjects
+      output$groupArray <- shiny::renderUI(
+        lapply(dataserver$groupObjects,
+               function(g) {
+                 print("Render Group")
+                 # Namespace
+                 g@name <- ns(g@name)
+                 groupUI(g)()
+                }))
     })
-
-    ## Upload box
-    output$ui_empty_box <- shiny::renderUI(
-      shinydashboard::box(
-        id = ns("empty_box"), title = paste("New", dtype), width = 12,
-        shiny::fileInput(ns("upload"), "Upload a file", multiple = TRUE))
-    )
-
   })
 }
 

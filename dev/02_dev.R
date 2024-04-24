@@ -32,6 +32,18 @@ golem::add_module(name = "databox") # Name of the module
 golem::add_fct("database")
 golem::add_fct("data")
 
+golem::add_fct("classDatabase")
+golem::add_fct("classPostgreSQL")
+golem::add_fct("classSQLite")
+golem::add_fct("classGroup")
+golem::add_fct("classData")
+golem::add_fct("classTimeseries")
+golem::add_fct("classMetadata")
+golem::add_fct("classGeospatialData")
+golem::add_fct("classVectorData")
+golem::add_fct("classRasterData")
+
+
 golem::add_utils("connect_database")
 golem::add_utils("render_sidebar")
 golem::add_utils("connect_postgres")

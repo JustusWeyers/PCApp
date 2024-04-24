@@ -138,8 +138,8 @@ mod_database_server <- function(id, r, txt) {
 
       # If postgres connection fails return SQLite connection
       error = function(e) {
-        db = connect.database(new("SQLite"))
-        return(db)
+       db = connect.database(new("SQLite"))
+       return(db)
       })
 
     }
@@ -212,6 +212,8 @@ mod_database_server <- function(id, r, txt) {
       r$db <- server$db
       # Share primary_table
       r$primary_table = get.table(server$db, tablename = "primary_table")
+      # Share datagroup_table
+      r$datagroup_table = get.table(server$db, tablename = "datagroup_table")
     })
 
     ### UI Elements
