@@ -1,8 +1,6 @@
 #' classDatabase
 #'
-#' @description A fct function
-#'
-#' @return The return value, if any, from executing the function.
+#' @description Database class.
 #'
 #' @noRd
 
@@ -93,6 +91,12 @@ setGeneric("appendto.table", function(d, table, values) standardGeneric("appendt
 
 setGeneric("delete.data", function(d, dataObject) standardGeneric("delete.data"))
 
+## Create one table for a single data group
+setGeneric("create.group_table", function(d, g) standardGeneric("create.group_table"))
+
+## Reimplementation of DBI::dbwritetable
+setGeneric("write.dbtable", function(d, tablename, value) standardGeneric("write.dbtable"))
+
 # Apocrypha
 
 # # Delete table
@@ -120,3 +124,8 @@ setGeneric("delete.data", function(d, dataObject) standardGeneric("delete.data")
 #             sql = paste0(r"(DELETE FROM primary_table WHERE name = ')", name, r"(';)")
 #             DBI::dbExecute(d@con, sql)
 #           })
+
+setGeneric("get.dgroup", function(d, dataObject) standardGeneric("get.dgroup"))
+setGeneric("get.key", function(d, dataObject) standardGeneric("get.key"))
+setGeneric("delete.row", function(d, table, field, cond) standardGeneric("delete.row"))
+

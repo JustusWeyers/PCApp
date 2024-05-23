@@ -21,10 +21,9 @@ mod_import_ui <- function(id){
       shiny::fluidPage(
         h1(),
         # Array for data groups
-        shiny::uiOutput(ns("groupArray")),
+        shiny::uiOutput(ns("ui_groupArray")),
         # Add a group
-        shiny::textInput(ns("groupname"), "Group name"),
-        shiny::actionButton(ns("addgroup"), "Add group")
+        shiny::uiOutput(ns("ui_addagroup"))
       )
     )
   )
@@ -46,81 +45,95 @@ mod_import_server <- function(id, r, txt, dtype){
   shiny::moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-    # Modules central dataserver reactive values
-    dataserver = shiny::reactiveValues(
+    # Reactive values
+
+    importserver = shiny::reactiveValues(
       groupObjects = NULL,
       delete = c()
     )
 
+    # Functions
+
+    ## Fetch datagroup_table group infos
+    groups = reactive(r$datagroup_table[r$datagroup_table$dtype == dtype,])
+
+    ## Create groups from datagroup table
+    dataGroups = reactive({
+      # Serial instantiation
+      grouplist = purrr::pmap(
+        .l = groups(),
+        .f = function(key, name, dtype, color, readmethod) {
+        # Constructor
+        methods::new(
+          "Group",
+          key = key,
+          name = name,
+          dtype = dtype,
+          color = color,
+          readmethod = readmethod
+        )
+      })
+      # Set names of grouplist
+      names(grouplist) = purrr::map_vec(grouplist, function(group) group@name)
+      return(grouplist)
+    })
+
+    # Call Group servers
+    call_group_servers = function(group_objects) {
+      lapply(
+        group_objects,
+        function(o) groupServer(o, r = r, importserver = importserver, txt = txt)
+      )
+    }
+
     # Server logic
 
-    ## Update on changes in r$primary_table
-    shiny::observeEvent(c(r$primary_table, r$datagroup_table), {
-      print(r$primary_table)
-      print(r$datagroup_table)
-
-      # Create data-objects from primarytables data
-      ## Fetch modules data from primary_table
-      data = r$primary_table[r$primary_table$dtype == dtype,]
-      ## Serial instantiation
-      dataObjects = purrr::pmap(
-        data, function(key, name, dtype, dgroup)
-        # Constructor
-        return(methods::new(dtype, key = key, name = name, dtype = dtype, dgroup = dgroup))
-      )
-
-      # Create group-objects from datagroup_table
-      ## Fetch modules groups from primary_table
-      groups = r$datagroup_table[r$datagroup_table$dtype == dtype,]
-      ## Serial instantiation
-      dataserver$groupObjects = purrr::pmap(
-        groups, function(key, name, dtype, color) {
-        # For each group fetch group data objects
-        groupdata = dataObjects[purrr::map_vec(dataObjects, function(o) o@dgroup == name)]
-        # Constructor
-        return(methods::new("Group", key = key, name = name, dtype = dtype, color = color, data = groupdata))
-      })
-
-      # Set names of dataserver groupData
-      names(dataserver$groupObjects) = purrr::map_vec(dataserver$groupObjects, function(group) group@name)
-
+    ## Update on changes in r$primary_table or r$datagroup_table
+    shiny::observeEvent(r$datagroup_table, {
+      # (Re-) Create Groups
+      importserver$groupObjects <- dataGroups()
       # Call group servers
-      lapply(dataserver$groupObjects, function(o) groupServer(o, r = r, dataserver = dataserver, txt = txt))
-
+      call_group_servers(importserver$groupObjects)
     })
 
-    ## Delete group on changes in dataserver$delete
-    shiny::observeEvent(dataserver$delete, {
+    ## Delete group on changes in importserver$delete
+    shiny::observeEvent(importserver$delete, {
       print("Delete Group")
       # Iterate over delete queue
-      lapply(dataserver$delete, function(name) {
+      lapply(importserver$delete, function(n) {
         # Delete from database
-        delete.data(r$db, dataserver$groupObjects[[name]])
+        delete.data(r$db, importserver$groupObjects[[n]])
         # Delete from groupdata
-        dataserver$groupObjects[name] <- NULL
+        importserver$groupObjects[n] <- NULL
       })
       # Clear queue
-      dataserver$delete <- c()
+      importserver$delete <- c()
     })
 
-    # Add Group
-    shiny::observeEvent(input$addgroup, {
-
-      # Check if group already exists
-      if (!(input$groupname %in% names(dataserver$groupObjects))) {
-        # Add entry to datagroup_table
-        appendto.table(r$db, table = "datagroup_table", values = data.frame(
-          name = input$groupname,
-          dtype = dtype,
-          color = "pink"
-        ))
-        # Update datagroup_table
-        r$datagroup_table = get.table(r$db, tablename = "datagroup_table")
-      } else {
-        print("Groupname already in use")
+    ## Add Group
+    shiny::observeEvent(
+      eventExpr = input$addgroup,
+      handlerExpr = {
+        # Check if group already exists
+        if (!(input$groupname %in% c(names(importserver$groupObjects), ""))) {
+          # If groupname is valid add group to datagroup_table
+          appendto.table(
+            d = r$db,
+            table = "datagroup_table",
+            values = data.frame(
+              name = input$groupname,
+              dtype = dtype,
+              color = sample(grDevices::colors(), 1),
+              readmethod = methods::new(dtype)@readmethod
+            )
+          )
+          # Update datagroup_table
+          r$datagroup_table = get.table(r$db, tablename = "datagroup_table")
+        } else {
+          print("Groupname is not valid")
+        }
       }
-
-    })
+    )
 
     # UI Elements
 
@@ -130,19 +143,50 @@ mod_import_server <- function(id, r, txt, dtype){
     })
 
     ## Render group boxes
-    shiny::observeEvent(r$datagroup_table, {
-      # Clear ui
-      output$groupArray <- shiny::renderUI(NULL)
-      # Iterate over groupObjects
-      output$groupArray <- shiny::renderUI(
-        lapply(dataserver$groupObjects,
-               function(g) {
-                 print("Render Group")
-                 # Namespace
-                 g@name <- ns(g@name)
-                 groupUI(g)()
-                }))
-    })
+    shiny::observeEvent(
+      eventExpr = importserver$groupObjects,
+      handlerExpr = {
+        # Clear group array ui
+        output$ui_groupArray <- shiny::renderUI(NULL)
+        # Iterate over groupObjects
+        output$ui_groupArray <- shiny::renderUI(
+          lapply(
+            X = importserver$groupObjects,
+            FUN = function(g) {
+              # Namespace
+              g@name <- ns(g@name)
+              groupUI(g)()
+            }
+          )
+        )
+      }
+    )
+
+    ## Render section to add a group
+    output$ui_addagroup <- shiny::renderUI(
+      fluidRow(
+        col_4(
+          # Column content
+          shiny::textInput(
+            # Text input parameters
+            inputId = ns("groupname"),
+            label = "Group name",
+            width = "100%"
+          )
+        ),
+        col_2(
+          # Column parameters
+          style = "margin-top: 25px;",
+          # Column content
+          shiny::actionButton(
+            inputId = ns("addgroup"),
+            label = "Add group"
+          )
+        ),
+        col_6()
+      )
+    )
+
   })
 }
 

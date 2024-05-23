@@ -19,3 +19,5 @@ $run_dev.*
 ^\.env$
 ^shinyproxy\.log$
 ^application\.properties$
+^app\.R$
+^rsconnect$

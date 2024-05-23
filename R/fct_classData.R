@@ -19,7 +19,8 @@ setClass("Data",
            filepath = "character",
            filetype = "character",
            filesize = "integer",
-           fileext = "character"
+           fileext = "character",
+           readparam = "list"
          ),
          prototype = list(
            key = NA_integer_,
@@ -31,7 +32,8 @@ setClass("Data",
            filepath = NA_character_,
            filetype = NA_character_,
            filesize = NA_integer_,
-           fileext = NA_character_
+           fileext = NA_character_,
+           readparam = list()
          ))
 
 # Generics
@@ -40,5 +42,5 @@ setGeneric("read.data", function(obj) standardGeneric("read.data"))
 
 setGeneric("boxUI", function(obj) standardGeneric("boxUI"))
 
-setGeneric("boxServer", function(obj, r, group_data, txt) standardGeneric("boxServer"))
+setGeneric("boxServer", function(obj, r, groupserver, txt) standardGeneric("boxServer"))
 

@@ -6,29 +6,17 @@
 #'
 #' @noRd
 
+# Class definition
+source("R/fct_classTableData.R")
+
 setClass("Metadata",
-         contains = "Data",
-         slots = c(
-           dec = "character",
-           sep = "character",
-           header = "logical",
-           quote = "character",
-           na.strings = "character",
-           nrows = "numeric",
-           skip = "numeric",
-           comment.char = "character"
-         ),
-         prototype = list(
-           dec = ".",
-           sep = ",",
-           header = FALSE,
-           quote = "\"'",
-           na.strings = "NA",
-           nrows = -1,
-           skip = 0,
-           comment.char = "#"
-         )
+         contains = "TableData"#,
+         # slots = c(
+         # ),
+         # prototype = list(
+         # )
 )
+
 
 # Methods
 
@@ -39,7 +27,6 @@ setMethod("read.data",
           function (obj) {
             if (obj@fileext == "csv") {
               df = read.csv(obj@filepath)
-              obj@nrow <- nrow(df)
               return(df)
             }
 
