@@ -10,7 +10,7 @@
 #' @importFrom purrr pmap map_vec
 #' @importFrom grDevices colors
 #' @importFrom gplots col2hex
-#' @importFrom htmltools div hr
+#' @importFrom colourpicker colourInput
 #'
 #' @noRd
 
@@ -80,6 +80,10 @@ setMethod("groupServer",
 
               # Constants
 
+              groupserver = shiny::reactiveValues(
+                obj = obj
+              )
+
               ## Generate a random namespace address
               randomaddress = random_address()
 
@@ -121,38 +125,43 @@ setMethod("groupServer",
               })
 
               new_grouptable = reactive({
-                df = S4_to_dataframe(new(obj@dtype))
+                df = S4_to_dataframe(new(groupserver$obj@dtype))
                 opt = as.data.frame(readparam())
-                write.dbtable(r$db, obj@name, merge(df, opt)[0,])
+                write.dbtable(r$db, groupserver$obj@name, merge(df, opt)[0,])
               })
 
               ## DB group table
-              group_table = shiny::reactive({
-                get.table(r$db, tablename = obj@name)
-              })
+              group_table = function() {
+                get.table(r$db, tablename = groupserver$obj@name)
+              }
+
+              datagroup_table = function() {
+                get.table(r$db, tablename = "datagroup_table")
+              }
 
               ## Get data objects
-              get_dataObjects = reactive({
+              get_dataObjects = function() {
                 # (Re-) Create data objects from details table
-                if (obj@name %in% user.tables(r$db)$tablename) {
-                  gt = group_table()
-                  objects = purrr::pmap(.l = gt, .f = recreateDataObjects)
+                if (groupserver$obj@name %in% user.tables(r$db)$tablename) {
+                  objects = purrr::pmap(.l = group_table(), .f = recreateDataObjects)
                   # Give dataobjects in list names
-                  names(objects) = gt$name
+                  names(objects) = group_table()$name
                   return(objects)
                 } else return(NULL)
-              })
+              }
 
               ## UI read parameter elements
               ui_parameters = reactive({
                 renderReadparameter = function(le, le_name) {
                   input_id = ns(paste(randomaddress, le_name, sep = "-"))
                   # Depending on inputtype render checkbox or text input
-                  if (class(le) == "logical" & !is.na(le)) {
+                  if (is(le, "logical") & !is.na(le)) {
                     shiny::checkboxInput(inputId = input_id, label = le_name, value = le)
                   }
-                  else if (class(le) == "character" | class(le) == "numeric" | is.na(le)) {
+                  else if (is(le, "character") | is.na(le)) {
                     shiny::textInput(inputId = input_id, label = le_name, value = toString(le))
+                  } else if (is(le, "numeric")) {
+                    shiny::numericInput(inputId = input_id, label = le_name, value = le)
                   }
                   else return()
                 }
@@ -171,11 +180,9 @@ setMethod("groupServer",
 
               # Reactive values
 
-              groupserver = shiny::reactiveValues(
-                dataObjects = get_dataObjects(),
-                readparam = readparaminputs(),
-                delete = c()
-              )
+              groupserver$dataObjects = get_dataObjects()
+              groupserver$readparam = readparaminputs()
+              groupserver$delete = c()
 
               # Server logic
 
@@ -183,13 +190,22 @@ setMethod("groupServer",
               shiny::observeEvent(
                 eventExpr = input[[paste0(randomaddress, "_readmethod")]],
                 handlerExpr = {
-                  if (!(obj@name %in% user.tables(r$db)$tablename) | readmethod() != obj@readmethod  ) {
+                  if (!(groupserver$obj@name %in% user.tables(r$db)$tablename) | groupserver$obj@readmethod != readmethod()  ) {
                     print("Create Grouptable")
+                    groupserver$obj@readmethod = readmethod()
                     new_grouptable()
                     groupserver$dataObjects <- NULL
                   }
                 }
               )
+
+              ## Observe changes in groupobject
+              shiny::observeEvent(groupserver$obj, {
+                dgt = datagroup_table()
+                lapply(colnames(dgt)[colnames(dgt) != "key"], function(x)
+                  update.table(r$db, "datagroup_table", x, slot(groupserver$obj, x), groupserver$obj@key)
+                )
+              })
 
               ## Observe file input
               shiny::observeEvent(
@@ -206,7 +222,7 @@ setMethod("groupServer",
                       # Import function
                       import,
                       # Import parameters
-                      dtype = obj@dtype, dgroup = obj@key,
+                      dtype = groupserver$obj@dtype, dgroup = groupserver$obj@key,
                       readmethod = readmethod(), readparam = readparam())
                     # Set names of new data objects
                     names(new_data_objects) = purrr::map_vec(new_data_objects, function(do) do@name)
@@ -218,6 +234,7 @@ setMethod("groupServer",
 
               # Update data boxes
               observeEvent(groupserver$dataObjects, {
+                # groupserver$dataObjects <- get_dataObjects()
                 lapply(groupserver$dataObjects, function(o) boxServer(o, r = r, groupserver = groupserver, txt = txt))
               })
 
@@ -227,7 +244,12 @@ setMethod("groupServer",
                 handlerExpr = {
                   change = input_change_detection()
                   if (length(change) == 1) {
-                    print(change)
+                    # Pass change to database
+                    gt = group_table()
+                    gt[,names(change)] <- rep(change, nrow(gt))
+                    write.dbtable(r$db, groupserver$obj@name, gt)
+                    # Update data objects in group
+                    groupserver$dataObjects = get_dataObjects()
                   }
                 }
               )
@@ -249,13 +271,24 @@ setMethod("groupServer",
                 }
               )
 
+              ## Observe color change
+              shiny::observeEvent(
+                eventExpr = input[[paste0(randomaddress,"_colorpicker")]],
+                handlerExpr = {
+                  groupserver$obj@color <- input[[paste0(randomaddress,"_colorpicker")]]
+
+                  importserver$groupObjects[[obj@name]] <- groupserver$obj
+
+                }
+              )
+
               ## Observe delete button
               shiny::observeEvent(
                 eventExpr = input[[paste0(randomaddress, "_deletebutton")]],
                 handlerExpr = {
-                  print(paste("Delete", obj@name))
+                  print(paste("Delete", groupserver$obj@name))
                   # Add data to delete queue
-                  importserver$delete <- append(importserver$delete, obj@name)
+                  importserver$delete <- append(importserver$delete, groupserver$obj@name)
                 }
               )
 
@@ -298,37 +331,62 @@ setMethod("groupServer",
                   # Selection parameters
                   inputId = ns(paste0(randomaddress, "_readmethod")),
                   label = txt[49],
-                  choices = new(obj@dtype)@readmethods,
-                  selected = obj@readmethod
+                  choices = new(groupserver$obj@dtype)@readmethods,
+                  selected = groupserver$obj@readmethod
                 )
               )
+
+              output$ui_color_picker <- shiny::renderUI({
+                if (!(obj@name %in% importserver$predefined_groups)) {
+                    colourpicker::colourInput(
+                      ns(paste0(randomaddress, "_colorpicker")),
+                      NULL, #txt[],
+                      groupserver$obj@color,
+                      palette = "limited",
+                      allowedCols = grDevices::colors())
+                }
+              })
 
               ## UI read parameter array
               output$ui_fun_params <- shiny::renderUI({
                 p = ui_parameters()
                 # Arrange created ui elements in columns
-                s = split(x = p, f = ceiling(seq_along(p)/ceiling(length(p)/2)))
+                s = split(x = p, f = ceiling(seq_along(p)/ceiling(length(p)/3)))
                 # Create HTML html elements
-                ui = shiny::fluidRow(col_6(s[1]), col_6(s[2]))
+                ui = shiny::fluidRow(col_4(s[1]), col_4(s[2]), col_4(s[3]))
                 # Deliver ui elements
                 return(ui)
               })
 
               ## Group options box
               output$ui_groupoptions <- shiny::renderUI(
-                shiny::fluidRow(
-                  # Box with options
-                  shinydashboard::box(
-                    # Box parameters
-                    id = ns(paste0(randomaddress, "_groupoptions")),
-                    title = txt[48],
-                    width = 12,
-                    collapsible = TRUE,
-                    collapsed = TRUE,
+                # Box with options
+                shinydashboard::box(
+                  # Box parameters
+                  id = ns(paste0(randomaddress, "_groupoptions")),
+                  title = txt[46],
+                  width = 12,
+                  collapsible = TRUE,
+                  collapsed = TRUE,
 
-                    # Box content
-                    shiny::uiOutput(ns("ui_fun_params"))
-                  )
+                  # Box content
+                  shiny::uiOutput(ns("ui_color_picker"))
+                )
+              )
+
+              ## Upload options box
+              output$ui_uploadoptions <- shiny::renderUI(
+                # Box with options
+                shinydashboard::box(
+                  # Box parameters
+                  id = ns(paste0(randomaddress, "_uploadoptions")),
+                  title = txt[48],
+                  width = 12,
+                  collapsible = TRUE,
+                  collapsed = TRUE,
+
+                  # Box content
+                  shiny::uiOutput(ns("ui_fun_params"))
                 )
               )
 
@@ -344,7 +402,7 @@ setMethod("groupServer",
                   shiny::fluidRow(
                     col_6(
                       #style = "margin-top: 25px;",
-                      shiny::uiOutput(ns("ui_fileinput")),
+                      shiny::uiOutput(ns("ui_fileinput"))
                     ),
                     col_6(
                       shiny::uiOutput(ns("ui_readmethod"))
@@ -352,10 +410,15 @@ setMethod("groupServer",
                   ),
                   shiny::fluidRow(
                     col_6(
-                      shiny::uiOutput(ns("ui_delete_button"))
+                      shiny::uiOutput(ns("ui_groupoptions"))
                     ),
                     col_6(
-                      shiny::uiOutput(ns("ui_groupoptions"))
+                      shiny::uiOutput(ns("ui_uploadoptions"))
+                    )
+                  ),
+                  shiny::fluidRow(
+                    col_6(
+                      shiny::uiOutput(ns("ui_delete_button"))
                     )
                   )
                 )
@@ -366,7 +429,7 @@ setMethod("groupServer",
                 shinydashboard::box(
                   # Box parameter
                   id = ns("box"),
-                  title = obj@name,
+                  title = groupserver$obj@name,
                   width = 12,
                   status = "primary",
                   solidHeader = TRUE,

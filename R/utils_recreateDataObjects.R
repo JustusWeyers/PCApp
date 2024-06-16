@@ -2,6 +2,8 @@
 #'
 #' @description Build data objects from entries in datagroup table
 #'
+#' @importFrom methods slot
+#'
 #' @return Object s of class data
 #'
 #' @noRd
@@ -19,7 +21,7 @@ recreateDataObjects = function(...) {
   # lapply(colnames(att), function(n) slot(newobject, n) = att[1,n])
 
   for (cn in colnames(att)) {
-    slot(newobject, cn) = att[,cn]
+    methods::slot(newobject, cn) = att[,cn]
   }
 
   return(newobject)

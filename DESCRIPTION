@@ -8,6 +8,7 @@ License: MIT + file LICENSE
 Depends: 
     R (>= 2.10)
 Imports: 
+    colourpicker,
     config (>= 0.3.2),
     DBI,
     DT,
@@ -15,7 +16,6 @@ Imports:
     gplots,
     grDevices,
     methods,
-    pkgload,
     purrr,
     RPostgres,
     RSQLite,
@@ -23,6 +23,7 @@ Imports:
     shinydashboard,
     shinyThings,
     stats,
+    stringr,
     tools,
     utils
 Suggests: 

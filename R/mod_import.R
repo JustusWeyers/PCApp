@@ -41,18 +41,23 @@ mod_import_ui <- function(id){
 #'
 #' @noRd
 
-mod_import_server <- function(id, r, txt, dtype){
-  shiny::moduleServer( id, function(input, output, session){
+mod_import_server <- function(id, r, txt, dtype, predefined_groups = c()){
+  shiny::moduleServer(id, function(input, output, session){
     ns <- session$ns
 
     # Reactive values
 
     importserver = shiny::reactiveValues(
+      predefined_groups = predefined_groups,
       groupObjects = NULL,
       delete = c()
     )
 
     # Functions
+
+    check_predefined_groups = reactive({
+      length(importserver$predefined_groups) > 0
+    })
 
     ## Fetch datagroup_table group infos
     groups = reactive(r$datagroup_table[r$datagroup_table$dtype == dtype,])
@@ -110,7 +115,32 @@ mod_import_server <- function(id, r, txt, dtype){
       importserver$delete <- c()
     })
 
-    ## Add Group
+    # Add predefined groups
+    shiny::observeEvent(
+      eventExpr = importserver$predefined_groups,
+      handlerExpr = {
+        # Check if there are (already existing) predefined groups
+        if (check_predefined_groups()) {
+          lapply(importserver$predefined_groups, function(gn) {
+            if (!(gn %in% names(importserver$groupObjects))) {
+              appendto.table(
+                d = r$db,
+                table = "datagroup_table",
+                values = data.frame(
+                  name = gn,
+                  dtype = dtype,
+                  color = "grey",
+                  readmethod = methods::new(dtype)@readmethod
+                )
+              )
+              # Update datagroup_table
+              r$datagroup_table = get.table(r$db, tablename = "datagroup_table")
+            }
+          })
+        }
+    })
+
+    ## Add user groups
     shiny::observeEvent(
       eventExpr = input$addgroup,
       handlerExpr = {
@@ -164,27 +194,29 @@ mod_import_server <- function(id, r, txt, dtype){
 
     ## Render section to add a group
     output$ui_addagroup <- shiny::renderUI(
-      fluidRow(
-        col_4(
-          # Column content
-          shiny::textInput(
-            # Text input parameters
-            inputId = ns("groupname"),
-            label = "Group name",
-            width = "100%"
-          )
-        ),
-        col_2(
-          # Column parameters
-          style = "margin-top: 25px;",
-          # Column content
-          shiny::actionButton(
-            inputId = ns("addgroup"),
-            label = "Add group"
-          )
-        ),
-        col_6()
-      )
+      if (!(check_predefined_groups())) {
+        fluidRow(
+          col_4(
+            # Column content
+            shiny::textInput(
+              # Text input parameters
+              inputId = ns("groupname"),
+              label = "Group name",
+              width = "100%"
+            )
+          ),
+          col_2(
+            # Column parameters
+            style = "margin-top: 25px;",
+            # Column content
+            shiny::actionButton(
+              inputId = ns("addgroup"),
+              label = "Add group"
+            )
+          ),
+          col_6()
+        )
+      }
     )
 
   })

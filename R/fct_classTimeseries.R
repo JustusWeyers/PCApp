@@ -26,8 +26,6 @@ setClass("Timeseries",
          )
 )
 
-
-
 # Methods
 
 ## Generate a box UI
@@ -48,6 +46,9 @@ setMethod("boxUI",
                   # DeleteButton
                   shiny::fluidRow(
                     col_4(
+                      h3("Head data"),
+                      shiny::tableOutput(ns("ui_headdata")),
+                      h3("Data"),
                       shiny::tableOutput(ns("ui_table_head")),
                       shiny::uiOutput(ns("ui_option_box"))
                     ),
@@ -95,29 +96,48 @@ setMethod("boxServer",
                 get.dgroup(r$db, dataserver$obj)
               })
 
+              # Can-load test
+              canload = reactive({
+                print(paste0("Can load (", obj@filepath, "): ", file.exists(obj@filepath)))
+                file.exists(obj@filepath)
+              })
+
               ## Read in data
               data = reactive(
-                tryCatch(
-                  {
+                if (canload()) {
+                  tryCatch({
                     return(do.call(obj@readmethod, c(file = obj@filepath, obj@readparam)))
-                  },
-                  warning = function(cond) {
-                    dataserver$filepath = NA
-                    return(get.table(r$db, obj@name))
-                  }
-                )
+                  }, error = function(cond) {
+                    return(data.frame())
+                  })
+                } else {
+                  dataserver$filepath = NA
+                  return(get.table(r$db, obj@name))
+                }
               )
 
               ## Fetch head data
-              headdata = reactive({})
+              headdata = reactive({
+                if (canload() & "skip" %in% names(obj@readparam)) {
+                  skip = getElement(obj@readparam, "skip")
+                  if (skip > 0) {
+                    l = readLines(con = obj@filepath, n = skip)
+                    if ("comment.char" %in% names(obj@readparam)) {
+                      l = stringr::str_replace_all(l, getElement(obj@readparam, "comment.char"), "")
+                    }
+                    return(l)
+                  }
+                } else {
+                  return(get.table(r$db, obj@name))
+                }
+              })
+
+              # read.list(file = obj@filepath, skip=0, nlines=skip, order=NULL)
 
               ## Create plot
               timeseries_plot = reactive({
-                # data = data()[!is.na(as.numeric(data())), ]
-                # return(plot(x = data[,1], y = data[,2], type = "l"))
-                return(plot(x = 1:10, y = 1:10))
+                plot(x = data()[data()[,2]>0,1], y = data()[data()[,2]>0,2])
               })
-
 
               # Server logic
 
@@ -127,7 +147,8 @@ setMethod("boxServer",
                 handlerExpr = {
                   print("Timeseries Server")
                   # Write data to database. Always(!) when observe changes
-                  write.data(r$db, dataserver$obj, data())
+                  dataserver$obj@key <- write.data(r$db, dataserver$obj, data())
+                  groupserver$dataObjects[[dataserver$obj@name]]@key <- dataserver$obj@key
                 }
               )
 
@@ -145,7 +166,10 @@ setMethod("boxServer",
               )
 
               ## Table head
-              output$ui_table_head <- shiny::renderTable(data(), width = "100%")
+              output$ui_table_head <- shiny::renderTable(head(data()), width = "100%")
+
+              ## Headdata
+              output$ui_headdata <- shiny::renderTable(headdata(), width = "100%")
 
               ## Preview
               output$ui_timeseries_plot <- shiny::renderPlot(timeseries_plot())
@@ -156,13 +180,13 @@ setMethod("boxServer",
             return(server)
           })
 
-setGeneric("attribute.df", function(obj) standardGeneric("attribute.df"))
-
-setMethod("attribute.df",
-          methods::signature(obj = "Timeseries"),
-          function (obj) {
-            attributes = methods::slotNames(obj)
-            a = purrr::map(attributes, function(slotname) slot(obj, slotname))
-            names(a) = attributes
-            return(data.frame(a)[, c("key", setdiff(attributes, "key"))])
-          })
+# setGeneric("attribute.df", function(obj) standardGeneric("attribute.df"))
+#
+# setMethod("attribute.df",
+#           methods::signature(obj = "Timeseries"),
+#           function (obj) {
+#             attributes = methods::slotNames(obj)
+#             a = purrr::map(attributes, function(slotname) slot(obj, slotname))
+#             names(a) = attributes
+#             return(data.frame(a)[, c("key", setdiff(attributes, "key"))])
+#           })

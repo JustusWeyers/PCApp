@@ -128,4 +128,4 @@ setGeneric("write.dbtable", function(d, tablename, value) standardGeneric("write
 setGeneric("get.dgroup", function(d, dataObject) standardGeneric("get.dgroup"))
 setGeneric("get.key", function(d, dataObject) standardGeneric("get.key"))
 setGeneric("delete.row", function(d, table, field, cond) standardGeneric("delete.row"))
-
+setGeneric("update.table", function(d, table, field, val, key) standardGeneric("update.table"))

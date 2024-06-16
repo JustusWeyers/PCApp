@@ -273,7 +273,7 @@ setMethod("delete.data",
             }
 
             # Delete a time series
-            if(methods::is(dataObject, "Timeseries")) {
+            if (methods::is(dataObject, "Timeseries") | methods::is(dataObject, "Metadata")) {
               # Delete from primary table
               sql = paste0(r"(DELETE FROM primary_table WHERE key = ')", dataObject@key, r"(';)")
               DBI::dbExecute(d@con, sql)
@@ -285,6 +285,7 @@ setMethod("delete.data",
               # Delete table
               DBI::dbRemoveTable(d@con, dataObject@name)
             }
+
           })
 
 # Takes a connection, a table name and a value and writes it to the connected
@@ -314,6 +315,16 @@ setMethod("delete.row",
           methods::signature(d = "PostgreSQL"),
           function (d, table, field, cond) {
             sql = paste0(r'(DELETE FROM ")', table, r'(" WHERE )', field, " = ", cond, ";")
-            print(sql)
+            DBI::dbExecute(d@con, sql)
+          })
+
+setMethod("update.table",
+          methods::signature(d = "PostgreSQL"),
+          function (d, table, field, val, key) {
+            if (is(val, "character")) {
+              sql = paste0(r'(UPDATE )', table, r'( SET )', field, " = '", val, "' WHERE key = ", key, ";")
+            } else {
+              sql = paste0(r'(UPDATE )', table, r'( SET )', field, " = ", val, " WHERE key = ", key, ";")
+            }
             DBI::dbExecute(d@con, sql)
           })

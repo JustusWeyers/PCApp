@@ -133,7 +133,7 @@ setMethod("create.datagrouptable",
               name           CHAR(100)  NOT NULL,
               dtype          CHAR(100)  NOT NULL,
               color          CHAR(100)  NOT NULL,
-              readmethod     CHAR(100)  NOT NULL,
+              readmethod     CHAR(100)  NOT NULL
               );
             )"
             # Run command on database
@@ -209,4 +209,15 @@ setMethod("write.dbtable",
           methods::signature(d = "SQLite"),
           function (d, tablename, value) {
             DBI::dbWriteTable(d@con, tablename, value, overwrite = TRUE)
+          })
+
+setMethod("update.table",
+          methods::signature(d = "SQLite"),
+          function (d, table, field, val, key) {
+            if (is(val, "character")) {
+              sql = paste0(r'(UPDATE )', table, r'( SET )', field, " = '", val, "' WHERE key = ", key, ";")
+            } else {
+              sql = paste0(r'(UPDATE )', table, r'( SET )', field, " = ", val, " WHERE key = ", key, ";")
+            }
+            DBI::dbExecute(d@con, sql)
           })
