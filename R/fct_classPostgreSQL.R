@@ -157,10 +157,10 @@ setMethod("user.tables",
 setMethod("write.data",
           methods::signature(d = "PostgreSQL"),
           function(d, dataObject, data){
-
+            print("write.data")
             ### PRIMARYTABLE
             # Eventually add entry to primary table
-            if (!(dataObject@name %in% user.tables(d)$tablename))
+            if (!(dataObject@name %in% get.table(d, "primary_table")$name))
               DBI::dbAppendTable(
                 d@con,
                 "primary_table",
@@ -172,9 +172,10 @@ setMethod("write.data",
             # Get dataObject key from primary_table
             dataObject@key <- get.key(d, dataObject)
 
+
             ### DATAGROUP TABLE
             # Create temporary object data.frame
-            attributedf = S4_to_dataframe(dataObject)
+            attributedf = s4_to_dataframe(dataObject)
             readparamdf = as.data.frame(dataObject@readparam)
             objectdf = merge(attributedf, readparamdf)
 
@@ -194,7 +195,6 @@ setMethod("write.data",
             if (!is.null(data)){
               DBI::dbWriteTable(d@con, name = dataObject@name, value = data, overwrite = TRUE)
             }
-
             return(dataObject@key)
           })
 

@@ -10,7 +10,18 @@
 source("R/fct_classTableData.R")
 
 setClass("Metadata",
-         contains = "TableData"
+         contains = "TableData",
+         prototype = list(
+           param = list(
+             central_cols = list(
+               ID = "id",
+               NAME = "name",
+               LAT = NA,
+               LON = NA
+             ),
+             missingVal = NA_character_
+           )
+         )
 )
 
 
@@ -33,7 +44,7 @@ setMethod("boxUI",
                   collapsible = TRUE, collapsed = TRUE,
                   # DeleteButton
                   shiny::fluidRow(
-                    shiny::uiOutput(ns("ui_table_head")),
+                    col_12(DT::DTOutput(ns("ui_table"))),
                     col_6(),
                     col_6(
                       col_6(),
@@ -82,19 +93,8 @@ setMethod("boxServer",
 
               ## Read in data
               data = reactive({
-                if (canload()) {
-                  tryCatch({
-                    return(do.call(obj@readmethod, c(file = obj@filepath, obj@readparam)))
-                  }, error = function(cond) {
-                    return(data.frame())
-                  })
-                } else {
-                  dataserver$filepath = NA
-                  return(get.table(r$db, obj@name))
-                }
+                get_data(r$db, dataserver$obj)
               })
-
-              # read.list(file = obj@filepath, skip=0, nlines=skip, order=NULL)
 
               ## Create plot
               timeseries_plot = reactive({
@@ -127,8 +127,13 @@ setMethod("boxServer",
                 shiny::actionButton(ns(paste0(randomaddress, "_delete_button")), label = txt[32], width = "100%")
               )
 
-              ## Table head
-              output$ui_table_head <- shiny::renderTable(head(data()), width = "100%")
+              ## Table
+
+
+              output$ui_table <- DT::renderDT({
+                DT::datatable(data(), options = list(scrollX = TRUE)) |>
+                  DT::formatStyle(groupserver$id_col, backgroundColor = "forestgreen")
+              })
 
               ## Preview
               output$ui_timeseries_plot <- shiny::renderPlot(timeseries_plot())
@@ -137,4 +142,26 @@ setMethod("boxServer",
 
             })
             return(server)
+          })
+
+setMethod("get_data",
+          methods::signature(obj = "Metadata"),
+          definition = function(d, obj) {
+
+            if (file.exists(obj@filepath)) {
+              tryCatch({
+                return(do.call(obj@readmethod, c(file = obj@filepath, obj@readparam)))
+              }, error = function(cond) {
+                return(data.frame())
+              })
+            } else {
+              return(get.table(d, obj@name))
+            }
+
+          })
+
+setMethod("get_cols",
+          methods::signature(obj = "Metadata"),
+          definition = function(d, obj) {
+            colnames(get_data(d, obj))
           })

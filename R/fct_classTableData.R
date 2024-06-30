@@ -12,12 +12,13 @@ source("R/fct_classData.R")
 setClass("TableData",
          contains = "Data",
          slots = c(
-           head = "data.frame",
+           head = "character",
            readmethod = "character",
-           readmethods = "character"
+           readmethods = "character",
+           param = "list"
          ),
          prototype = list(
-           head = data.frame(),
+           head = "",
            readmethod = "read.table",
            readmethods = c(
              "read.csv",
@@ -26,6 +27,15 @@ setClass("TableData",
              "read.delim2",
              "read.table",
              "readRDS"
-           )
+           ),
+           param = list()
          )
 )
+
+
+
+setGeneric("get_data", function(d, obj) standardGeneric("get_data"))
+
+setGeneric("get_cols", function(d, obj) standardGeneric("get_cols"))
+
+setGeneric("get_head_data", function(d, obj) standardGeneric("get_head_data"))

@@ -95,7 +95,7 @@ setMethod("groupServer",
                 # Extract name for display
                 display_name = tools::file_path_sans_ext(name)
                 # Combine working name as pair of displayName and datatype
-                working_name = paste0(display_name, "_", dtype, "_", dgroup)
+                working_name = paste0(stringr::str_replace_all(display_name, "[^[:alnum:]]", ""), "_", dtype, "_", dgroup)
                 # File extension
                 ext = tools::file_ext(name)
                 # Create new upload data object
@@ -110,6 +110,11 @@ setMethod("groupServer",
 
               # Reactive functions
 
+              all_colnames = reactive({
+                # Fetch colnames of all objects
+                unname(unlist(purrr::map(groupserver$dataObjects, function(x) get_cols(r$db, x))))
+              })
+
               readmethod = reactive({
                 input[[paste0(randomaddress, "_readmethod")]]
               })
@@ -118,14 +123,19 @@ setMethod("groupServer",
                 optional_fun_param(readmethod())
               })
 
-              readparaminputs = reactive({
-                l = lapply(names(readparam()), function(n) input[[paste(randomaddress, n, sep = "-")]])
-                names(l) = names(readparam())
+              param = reactive({
+                a = new(groupserver$obj@dtype)@param
+              })
+
+              array_inputs = reactive({
+                input_elements = c(readparam(), param())
+                l = lapply(names(input_elements), function(n) input[[paste(randomaddress, n, sep = "-")]])
+                names(l) = names(input_elements)
                 return(l)
               })
 
               new_grouptable = reactive({
-                df = S4_to_dataframe(new(groupserver$obj@dtype))
+                df = s4_to_dataframe(new(groupserver$obj@dtype))
                 opt = as.data.frame(readparam())
                 write.dbtable(r$db, groupserver$obj@name, merge(df, opt)[0,])
               })
@@ -169,19 +179,42 @@ setMethod("groupServer",
                 purrr::map2(readparam(), names(readparam()), renderReadparameter)
               })
 
+              ui_param = reactive({
+                renderColSelection = function(le, le_name) {
+                  choices = purrr::map(groupserver$dataObjects, function(o) {
+                    slot(o, "param")[[le_name]]
+                  })
+                  choices = unname(unlist(choices))
+                  if (all(is.na(choices))) {
+                    ui = shiny::textInput(
+                      inputId = ns(paste0(randomaddress, "-", le_name)),
+                      label = le_name
+                    )
+                  } else {
+                    ui = shiny::selectInput(
+                      inputId = ns(paste0(randomaddress, "-", le_name)),
+                      label = le_name,
+                      choices = c(unname(unlist(choices)), " ")
+                    )
+                  }
+                  return(ui)
+                }
+                return(purrr::map2(param(), names(param()), renderColSelection))
+              })
+
               input_change_detection = reactive({
                 # Rename inputs for convenience
-                Lobs = readparaminputs()
-                Lexp = groupserver$readparam
+                Lobs = array_inputs()
+                Lexp = groupserver$array_inputs
                 # Update
-                groupserver$readparam <- readparaminputs()
+                groupserver$array_inputs <- array_inputs()
                 return(setdifflist(Lobs, Lexp))
               })
 
               # Reactive values
 
               groupserver$dataObjects = get_dataObjects()
-              groupserver$readparam = readparaminputs()
+              groupserver$readparam = array_inputs()
               groupserver$delete = c()
 
               # Server logic
@@ -238,18 +271,28 @@ setMethod("groupServer",
                 lapply(groupserver$dataObjects, function(o) boxServer(o, r = r, groupserver = groupserver, txt = txt))
               })
 
-              ## Observe read parameter ui
+              ## Observe conditional inputs
               shiny::observeEvent(
-                eventExpr = readparaminputs(),
+                eventExpr = array_inputs(),
                 handlerExpr = {
+                  # Detect the change
                   change = input_change_detection()
+
+                  print(change)
                   if (length(change) == 1) {
-                    # Pass change to database
+                    # # Pass change to database
                     gt = group_table()
-                    gt[,names(change)] <- rep(change, nrow(gt))
-                    write.dbtable(r$db, groupserver$obj@name, gt)
-                    # Update data objects in group
-                    groupserver$dataObjects = get_dataObjects()
+                    if (names(change) %in% colnames(gt)) {
+                       gt[,names(change)] <- rep(change, nrow(gt))
+                       write.dbtable(r$db, groupserver$obj@name, gt)
+                       # Update data objects in group
+                       groupserver$dataObjects = get_dataObjects()
+                    }
+                    # if (names(change) %in% names(param())){
+                    #   lapply(names(groupserver$dataObjects), function(n) {
+                    #     groupserver$dataObjects[[n]]@param$central_cols[names(change)] <- change
+                    #   })
+                    # }
                   }
                 }
               )
@@ -340,11 +383,20 @@ setMethod("groupServer",
                 if (!(obj@name %in% importserver$predefined_groups)) {
                     colourpicker::colourInput(
                       ns(paste0(randomaddress, "_colorpicker")),
-                      NULL, #txt[],
+                      txt[50],
                       groupserver$obj@color,
                       palette = "limited",
                       allowedCols = grDevices::colors())
                 }
+              })
+
+
+              output$ui_group_param <- shiny::renderUI({
+                ui_param()
+              })
+
+              observeEvent(input[[paste0(randomaddress, "_id_picker")]], {
+                groupserver$id_col = input[[paste0(randomaddress, "_id_picker")]]
               })
 
               ## UI read parameter array
@@ -370,7 +422,8 @@ setMethod("groupServer",
                   collapsed = TRUE,
 
                   # Box content
-                  shiny::uiOutput(ns("ui_color_picker"))
+                  shiny::uiOutput(ns("ui_color_picker")),
+                  shiny::uiOutput(ns("ui_group_param"))
                 )
               )
 
@@ -449,3 +502,11 @@ setMethod("groupServer",
             })
             return(server)
           })
+
+
+# if (!is.na(le) & any(startsWith(tolower(cn), tolower(le)))) {
+#   sel = cn[startsWith(tolower(cn), tolower(le))][1]
+# } else {
+#   sel = NULL
+# }
+# sel = NULL

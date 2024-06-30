@@ -11,7 +11,7 @@
 #' @noRd
 
 # Create one column for every slot
-S4_to_dataframe <- function(s4obj) {
+s4_to_dataframe <- function(s4obj) {
   # Get names of slots
   nms <- methods::slotNames(s4obj)
   # Slot class types compatible with database table

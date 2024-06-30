@@ -38,9 +38,10 @@ setClass("Data",
 
 # Generics
 
-setGeneric("read.data", function(obj) standardGeneric("read.data"))
+# setGeneric("read.data", function(obj) standardGeneric("read.data"))
 
 setGeneric("boxUI", function(obj) standardGeneric("boxUI"))
 
 setGeneric("boxServer", function(obj, r, groupserver, txt) standardGeneric("boxServer"))
 
+setGeneric("doupdate", function(obj, d) standardGeneric("doupdate"))

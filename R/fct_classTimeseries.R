@@ -19,10 +19,27 @@ source("R/fct_classTableData.R")
 setClass("Timeseries",
          contains = "TableData",
          slots = c(
-           dateformat = "character"
+           dateformat = "character",
+           missing_val = "character",
+           timestamp = "character",
+           value = "character",
+           valid = "character",
+           colnames = "character"
          ),
          prototype = list(
-           dateformat = "%Y-%m-%d"
+           dateformat = "%Y-%m-%d",
+           missing_val = NA_character_,
+           timestamp = NA_character_,
+           value = NA_character_,
+           valid = NA_character_,
+           colnames = NA_character_,
+           param = list(
+             timestamp = NA_character_,
+             value = NA_character_,
+             valid = NA_character_,
+             colnames = NA_character_,
+             missing_val = NA_character_
+           )
          )
 )
 
@@ -40,27 +57,7 @@ setMethod("boxUI",
                 ####
 
                 # The displayed box
-                shinydashboard::box(
-                  id = "box", title = obj@displayname, width = 12,
-                  collapsible = TRUE, collapsed = TRUE,
-                  # DeleteButton
-                  shiny::fluidRow(
-                    col_4(
-                      h3("Head data"),
-                      shiny::tableOutput(ns("ui_headdata")),
-                      h3("Data"),
-                      shiny::tableOutput(ns("ui_table_head")),
-                      shiny::uiOutput(ns("ui_option_box"))
-                    ),
-                    col_8(
-                      shiny::plotOutput(ns("ui_timeseries_plot")),
-                      col_6(),
-                      col_6(
-                        shiny::uiOutput(ns("ui_delete_button"))
-                      )
-                    )
-                  )
-                )
+                shiny::uiOutput(ns("ui_databox"))
 
                 ####
 
@@ -92,9 +89,9 @@ setMethod("boxServer",
 
               # Reactive functions
 
-              datagroup = reactive({
+              datagroup = reactive(
                 get.dgroup(r$db, dataserver$obj)
-              })
+              )
 
               # Can-load test
               canload = reactive({
@@ -104,51 +101,49 @@ setMethod("boxServer",
 
               ## Read in data
               data = reactive(
-                if (canload()) {
-                  tryCatch({
-                    return(do.call(obj@readmethod, c(file = obj@filepath, obj@readparam)))
-                  }, error = function(cond) {
-                    return(data.frame())
-                  })
-                } else {
-                  dataserver$filepath = NA
-                  return(get.table(r$db, obj@name))
-                }
+                get_data(r$db, dataserver$obj)
               )
 
               ## Fetch head data
-              headdata = reactive({
-                if (canload() & "skip" %in% names(obj@readparam)) {
-                  skip = getElement(obj@readparam, "skip")
-                  if (skip > 0) {
-                    l = readLines(con = obj@filepath, n = skip)
-                    if ("comment.char" %in% names(obj@readparam)) {
-                      l = stringr::str_replace_all(l, getElement(obj@readparam, "comment.char"), "")
-                    }
-                    return(l)
-                  }
-                } else {
-                  return(get.table(r$db, obj@name))
-                }
-              })
+              headdata = reactive(
+                get_head_data(r$db, dataserver$obj)
+              )
 
               # read.list(file = obj@filepath, skip=0, nlines=skip, order=NULL)
 
               ## Create plot
               timeseries_plot = reactive({
-                plot(x = data()[data()[,2]>0,1], y = data()[data()[,2]>0,2])
+                d = data()
+
+                # print(head(d))
+                # print(paste("missing_val:", dataserver$obj@missing_val))
+                # print(paste("value:", dataserver$obj@value))
+                # if (all(!is.na(c(dataserver$obj@missing_val, dataserver$obj@value)))) {
+                #   d = d[dataserver$obj@value != as.numeric(dataserver$obj@missing_val),]
+                # }
+
+                d = data.frame(Zeit = d[,1], Wert = d[,2])
+                return(ggplot2::ggplot(d, ggplot2::aes(x = Zeit, y = Wert)) + ggplot2::geom_line())
+                # plot(x = data()[data()[,2]>0,1], y = data()[data()[,2]>0,2])
               })
 
               # Server logic
-
               ## Observe reactive data object
               shiny::observeEvent(
                 eventExpr = dataserver$obj,
+
                 handlerExpr = {
                   print("Timeseries Server")
-                  # Write data to database. Always(!) when observe changes
-                  dataserver$obj@key <- write.data(r$db, dataserver$obj, data())
-                  groupserver$dataObjects[[dataserver$obj@name]]@key <- dataserver$obj@key
+                  print("---------------------------")
+                  print(dataserver$obj)
+                  print("---------------------------")
+                  if (!identical(doupdate(dataserver$obj, r$db), dataserver$obj)) {
+                    print(paste("--- Update", dataserver$obj@name, "-------"))
+                    # Write data to database. Always(!) when observe changes
+                    dataserver$obj = doupdate(dataserver$obj, r$db)
+                    # Pass updated object upwards
+                    groupserver$dataObjects[[dataserver$obj@name]] <- dataserver$obj
+                  }
                 }
               )
 
@@ -169,10 +164,34 @@ setMethod("boxServer",
               output$ui_table_head <- shiny::renderTable(head(data()), width = "100%")
 
               ## Headdata
-              output$ui_headdata <- shiny::renderTable(headdata(), width = "100%")
+              output$ui_headdata <- shiny::renderText(headdata())
 
               ## Preview
               output$ui_timeseries_plot <- shiny::renderPlot(timeseries_plot())
+
+              output$ui_databox = shiny::renderUI({
+                shinydashboard::box(
+                  id = "box", title = obj@displayname, width = 12,
+                  collapsible = TRUE, collapsed = TRUE,
+                  # DeleteButton
+                  shiny::fluidRow(
+                    col_4(
+                      h3(r$txt[51]),
+                      shiny::textOutput(ns("ui_headdata")),
+                      h3(r$txt[52]),
+                      shiny::tableOutput(ns("ui_table_head")),
+                      shiny::uiOutput(ns("ui_option_box"))
+                    ),
+                    col_8(
+                      shiny::plotOutput(ns("ui_timeseries_plot")),
+                      col_6(),
+                      col_6(
+                        shiny::uiOutput(ns("ui_delete_button"))
+                      )
+                    )
+                  )
+                )
+              })
 
               ####
 
@@ -180,13 +199,84 @@ setMethod("boxServer",
             return(server)
           })
 
-# setGeneric("attribute.df", function(obj) standardGeneric("attribute.df"))
-#
-# setMethod("attribute.df",
-#           methods::signature(obj = "Timeseries"),
-#           function (obj) {
-#             attributes = methods::slotNames(obj)
-#             a = purrr::map(attributes, function(slotname) slot(obj, slotname))
-#             names(a) = attributes
-#             return(data.frame(a)[, c("key", setdiff(attributes, "key"))])
-#           })
+setMethod("doupdate",
+          methods::signature(obj = "Timeseries"),
+          definition = function(obj, d) {
+
+            data = get_data(d, obj)
+            obj@head = get_head_data(d, obj)
+
+            obj@param[["timestamp"]] = colnames(data)
+            obj@param[["value"]] = colnames(data)
+            obj@param[["valid"]] = colnames(data)
+            obj@param[["colnames"]] = colnames(data)
+
+            obj@key = write.data(d, obj, data)
+
+            return(obj)
+          })
+
+setMethod("get_data",
+          methods::signature(obj = "Timeseries"),
+          definition = function(d, obj) {
+            print("get_data")
+            if (file.exists(obj@filepath)) {
+              tryCatch({
+                dat = do.call(obj@readmethod, c(file = obj@filepath, obj@readparam, fill = TRUE))
+                # print(paste0("obj@value: ", obj@value))
+                # print(paste0("obj@missing_val: ", obj@missing_val))
+                # if(!(obj@missing_val == "")) {
+                #   dat2 = d[dat[,obj@value]!=obj@missing_val,]
+                #   print(dat2)
+                # }
+                return(dat)
+              }, error = function(cond) {
+                print(cond)
+                return(data.frame())
+              })
+            } else {
+              dat = get.table(d, obj@name)
+              return(dat)
+            }
+          })
+
+setMethod("get_head_data",
+          methods::signature(obj = "Timeseries"),
+          definition = function(d, obj) {
+            if (file.exists(obj@filepath)) {
+              # Read all lines
+              l = readLines(con = obj@filepath)
+              # The headlines to come
+              hlines = c()
+              # Add headlines based on 'skip'
+              if ("skip" %in% names(obj@readparam)) {
+                skip = getElement(obj@readparam, "skip")
+                hlines = c(hlines, 1:skip)
+              }
+              # Add headlines based on 'comment.char'
+              if ("comment.char" %in% names(obj@readparam)) {
+                c.char = getElement(obj@readparam, "comment.char")
+                hlines = c(hlines, which(startsWith(l, c.char)))
+              }
+              # Clean up messy characters
+              txt = stringi::stri_trans_general(l[unique(hlines)], "Latin-ASCII")
+              # Create string
+              txt = paste(paste0(txt, "\n"), collapse = '')
+              # Return string containing head lines
+              return(txt)
+            } else {
+              # Fetch datagroup table
+              dgt = get.table(d, get.dgroup(d, obj))
+              # Fetch head string from dgt
+              txt = dgt[dgt$name == obj@name, "head"]
+              # Return string containing head string
+              return(txt)
+            }
+          })
+
+setMethod("get_cols",
+          methods::signature(obj = "Timeseries"),
+          definition = function(d, obj) {
+            colnames(get_data(d, obj))
+          })
+
