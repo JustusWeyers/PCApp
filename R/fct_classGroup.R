@@ -23,7 +23,8 @@ setClass("Group",
            dtype = "character",
            color = "character",
            data = "list",
-           readmethod = "character"
+           readmethod = "character",
+           gparam = "list"
          ),
          prototype = list(
            key = NA_integer_,
@@ -31,7 +32,8 @@ setClass("Group",
            dtype = NA_character_,
            color = "black",
            data = list(),
-           readmethod = NA_character_
+           readmethod = NA_character_,
+           gparam = list()
          )
 )
 
@@ -78,11 +80,13 @@ setMethod("groupServer",
 
               ####
 
-              # Constants
+              # Groupservers reactive values
 
               groupserver = shiny::reactiveValues(
                 obj = obj
               )
+
+              # Constants
 
               ## Generate a random namespace address
               randomaddress = random_address()
@@ -106,6 +110,26 @@ setMethod("groupServer",
                   readmethod = readmethod, readparam = readparam
                 )
                 return(new_data_object)
+              }
+
+              ## DB group table
+              group_table = function() {
+                get.table(r$db, tablename = groupserver$obj@name)
+              }
+
+              datagroup_table = function() {
+                get.table(r$db, tablename = "datagroup_table")
+              }
+
+              ## Get data objects
+              get_dataObjects = function() {
+                # (Re-) Create data objects from details table
+                if (groupserver$obj@name %in% user.tables(r$db)$tablename) {
+                  objects = purrr::pmap(.l = group_table(), .f = recreateDataObjects)
+                  # Give dataobjects in list names
+                  names(objects) = group_table()$name
+                  return(objects)
+                } else return(NULL)
               }
 
               # Reactive functions
@@ -140,25 +164,6 @@ setMethod("groupServer",
                 write.dbtable(r$db, groupserver$obj@name, merge(df, opt)[0,])
               })
 
-              ## DB group table
-              group_table = function() {
-                get.table(r$db, tablename = groupserver$obj@name)
-              }
-
-              datagroup_table = function() {
-                get.table(r$db, tablename = "datagroup_table")
-              }
-
-              ## Get data objects
-              get_dataObjects = function() {
-                # (Re-) Create data objects from details table
-                if (groupserver$obj@name %in% user.tables(r$db)$tablename) {
-                  objects = purrr::pmap(.l = group_table(), .f = recreateDataObjects)
-                  # Give dataobjects in list names
-                  names(objects) = group_table()$name
-                  return(objects)
-                } else return(NULL)
-              }
 
               ## UI read parameter elements
               ui_parameters = reactive({
@@ -181,6 +186,7 @@ setMethod("groupServer",
 
               ui_param = reactive({
                 renderColSelection = function(le, le_name) {
+                  # Gather all possible choices
                   choices = purrr::map(groupserver$dataObjects, function(o) {
                     slot(o, "param")[[le_name]]
                   })
@@ -188,13 +194,16 @@ setMethod("groupServer",
                   if (all(is.na(choices))) {
                     ui = shiny::textInput(
                       inputId = ns(paste0(randomaddress, "-", le_name)),
-                      label = le_name
+                      label = le_name,
+                      value = ""
                     )
+                  # Render select input for not NA
                   } else {
                     ui = shiny::selectInput(
                       inputId = ns(paste0(randomaddress, "-", le_name)),
                       label = le_name,
-                      choices = c(unname(unlist(choices)), " ")
+                      choices = c(unname(unlist(choices)), " "),
+                      selected = " "
                     )
                   }
                   return(ui)
@@ -211,13 +220,14 @@ setMethod("groupServer",
                 return(setdifflist(Lobs, Lexp))
               })
 
-              # Reactive values
+              ##################################################################
+
+              # Server logic
 
               groupserver$dataObjects = get_dataObjects()
               groupserver$readparam = array_inputs()
               groupserver$delete = c()
-
-              # Server logic
+              groupserver$param = obj@gparam
 
               ## Observe read method
               shiny::observeEvent(
@@ -234,10 +244,14 @@ setMethod("groupServer",
 
               ## Observe changes in groupobject
               shiny::observeEvent(groupserver$obj, {
-                dgt = datagroup_table()
-                lapply(colnames(dgt)[colnames(dgt) != "key"], function(x)
+                lapply(c("name", "dtype", "color", "readmethod"), function(x) {
                   update.table(r$db, "datagroup_table", x, slot(groupserver$obj, x), groupserver$obj@key)
-                )
+                })
+              })
+
+              shiny::observeEvent(groupserver$param, {
+                print("# Set gparam")
+                update.table(r$db, "datagroup_table", "gparam", toString(jsonlite::toJSON(groupserver$param)),  groupserver$obj@key)
               })
 
               ## Observe file input
@@ -277,22 +291,17 @@ setMethod("groupServer",
                 handlerExpr = {
                   # Detect the change
                   change = input_change_detection()
-
-                  print(change)
                   if (length(change) == 1) {
-                    # # Pass change to database
+                    # Pass change to database
                     gt = group_table()
                     if (names(change) %in% colnames(gt)) {
-                       gt[,names(change)] <- rep(change, nrow(gt))
-                       write.dbtable(r$db, groupserver$obj@name, gt)
-                       # Update data objects in group
-                       groupserver$dataObjects = get_dataObjects()
+                      print("if taken")
+                      # gt[,names(change)] <- rep(change, nrow(gt))
+                      # write.dbtable(r$db, groupserver$obj@name, gt)
+                      # # Update data objects in group
+                      # groupserver$dataObjects = get_dataObjects()
                     }
-                    # if (names(change) %in% names(param())){
-                    #   lapply(names(groupserver$dataObjects), function(n) {
-                    #     groupserver$dataObjects[[n]]@param$central_cols[names(change)] <- change
-                    #   })
-                    # }
+                    groupserver$param[names(change)] <- change
                   }
                 }
               )
@@ -319,9 +328,7 @@ setMethod("groupServer",
                 eventExpr = input[[paste0(randomaddress,"_colorpicker")]],
                 handlerExpr = {
                   groupserver$obj@color <- input[[paste0(randomaddress,"_colorpicker")]]
-
                   importserver$groupObjects[[obj@name]] <- groupserver$obj
-
                 }
               )
 
@@ -486,6 +493,8 @@ setMethod("groupServer",
                   width = 12,
                   status = "primary",
                   solidHeader = TRUE,
+                  collapsible = TRUE,
+                  collapsed = FALSE,
 
                   # Box content
                   shiny::fluidRow(

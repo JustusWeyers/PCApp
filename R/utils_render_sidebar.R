@@ -13,8 +13,8 @@
 render_sidebar <- function(apptext) {
   # Define sidebar menu content
   menu_items <- data.frame(name = apptext,
-                           id = c("import", "settings"),
-                           icon = c("cloud-arrow-up", "gear"))
+                           id = c("home", "import",  "selection", "pca", "export", "settings"),
+                           icon = c("house", "file-arrow-up", "filter", "wave-square", "file-arrow-down", "gear"))
 
   # Build sidebar menu
   sidebarmenu <- shinydashboard::renderMenu(

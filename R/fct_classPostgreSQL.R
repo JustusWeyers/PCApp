@@ -228,7 +228,8 @@ setMethod("create.datagrouptable",
                   name           VARCHAR(100) not null,
                   dtype          VARCHAR(100) not null,
                   color          VARCHAR(100) not null,
-                  readmethod     VARCHAR(100) not null
+                  readmethod     VARCHAR(100) not null,
+                  gparam         VARCHAR(999)
               );
             )"
             # Run command on database

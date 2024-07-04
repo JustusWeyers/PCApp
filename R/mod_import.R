@@ -67,17 +67,20 @@ mod_import_server <- function(id, r, txt, dtype, predefined_groups = c()){
       # Serial instantiation
       grouplist = purrr::pmap(
         .l = groups(),
-        .f = function(key, name, dtype, color, readmethod) {
-        # Constructor
-        methods::new(
-          "Group",
-          key = key,
-          name = name,
-          dtype = dtype,
-          color = color,
-          readmethod = readmethod
-        )
-      })
+        .f = function(key, name, dtype, color, readmethod, gparam) {
+          # if (is.null(gparam)) gparam = "{}"
+          # Constructor
+          methods::new(
+            "Group",
+            key = key,
+            name = name,
+            dtype = dtype,
+            color = color,
+            readmethod = readmethod,
+            gparam = jsonlite::fromJSON(gparam)
+          )
+        }
+      )
       # Set names of grouplist
       names(grouplist) = purrr::map_vec(grouplist, function(group) group@name)
       return(grouplist)
@@ -119,6 +122,7 @@ mod_import_server <- function(id, r, txt, dtype, predefined_groups = c()){
     shiny::observeEvent(
       eventExpr = importserver$predefined_groups,
       handlerExpr = {
+
         # Check if there are (already existing) predefined groups
         if (check_predefined_groups()) {
           lapply(importserver$predefined_groups, function(gn) {
@@ -130,7 +134,8 @@ mod_import_server <- function(id, r, txt, dtype, predefined_groups = c()){
                   name = gn,
                   dtype = dtype,
                   color = "grey",
-                  readmethod = methods::new(dtype)@readmethod
+                  readmethod = methods::new(dtype)@readmethod,
+                  gparam = jsonlite::toJSON(list())
                 )
               )
               # Update datagroup_table
@@ -154,7 +159,8 @@ mod_import_server <- function(id, r, txt, dtype, predefined_groups = c()){
               name = input$groupname,
               dtype = dtype,
               color = sample(grDevices::colors(), 1),
-              readmethod = methods::new(dtype)@readmethod
+              readmethod = methods::new(dtype)@readmethod,
+              gparam = jsonlite::toJSON(list())
             )
           )
           # Update datagroup_table

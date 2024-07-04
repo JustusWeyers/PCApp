@@ -27,6 +27,12 @@ app_ui <- function(request) {
       shinydashboard::dashboardBody(
         shinydashboard::tabItems(
 
+          # Home
+          shinydashboard::tabItem(
+            tabName = "home",
+            mod_home_ui("home")
+          ),
+
           # Import
           shinydashboard::tabItem(
             tabName = "import", shiny::tabsetPanel(
@@ -36,7 +42,25 @@ app_ui <- function(request) {
             )
           ),
 
+          # Data selection
+          shinydashboard::tabItem(
+            tabName = "selection",
+            mod_selection_ui("select")
+          ),
+
           # Analysis
+          shinydashboard::tabItem(
+            tabName = "pca", shiny::tabsetPanel(
+              type = "tabs",
+              mod_PCA_ui("PCA")
+            )
+          ),
+
+          # Export
+          shinydashboard::tabItem(
+            tabName = "export",
+            mod_export_ui("export")
+          ),
 
           # Settings
           shinydashboard::tabItem(

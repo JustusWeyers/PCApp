@@ -22,10 +22,13 @@ attachment::att_amend_desc()
 
 ## Add modules ----
 ## Create a module infrastructure in R/
+golem::add_module(name = "home") # Name of the module
 golem::add_module(name = "database") # Name of the module
 golem::add_module(name = "ENV") # Name of the module
 golem::add_module(name = "import") # Name of the module
-golem::add_module(name = "databox") # Name of the module
+golem::add_module(name = "selection") # Name of the module
+golem::add_module(name = "PCA") # Name of the module
+golem::add_module(name = "export") # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*

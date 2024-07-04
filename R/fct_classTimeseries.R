@@ -19,26 +19,20 @@ source("R/fct_classTableData.R")
 setClass("Timeseries",
          contains = "TableData",
          slots = c(
-           dateformat = "character",
-           missing_val = "character",
            timestamp = "character",
            value = "character",
-           valid = "character",
-           colnames = "character"
+           missing_val = "character",
+           dateformat = "character",
+           param = list()
          ),
          prototype = list(
-           dateformat = "%Y-%m-%d",
-           missing_val = NA_character_,
-           timestamp = NA_character_,
-           value = NA_character_,
-           valid = NA_character_,
-           colnames = NA_character_,
            param = list(
              timestamp = NA_character_,
              value = NA_character_,
              valid = NA_character_,
              colnames = NA_character_,
-             missing_val = NA_character_
+             missing_val = NA_character_,
+             dateformat = NA_character_
            )
          )
 )
@@ -76,16 +70,29 @@ setMethod("boxServer",
 
               ####
 
+              # Dataservers reactive values
+              dataserver = reactiveValues(
+                # Make reactive copy of obj itself
+                obj = obj,
+                # Store last used readparam
+                oreadparam = obj@readparam
+              )
+
               # Constants
 
               ## Generate a random name for button.
               randomaddress = random_address()
 
-              # Reactive Values
+              # Functions
 
-              dataserver = reactiveValues(
-                obj = obj
-              )
+              ## Fetch groupserver param
+              fetch_groupparam = function(pname) {
+                if (pname %in% names(groupserver$param)) {
+                  return(groupserver$param[[pname]])
+                } else {
+                  return(NA)
+                }
+              }
 
               # Reactive functions
 
@@ -109,40 +116,70 @@ setMethod("boxServer",
                 get_head_data(r$db, dataserver$obj)
               )
 
-              # read.list(file = obj@filepath, skip=0, nlines=skip, order=NULL)
+              ## Perform some cleaning
+              clean_data = reactive({
+                # Fetch messy data
+                data = data()
+                # Fetch group parameter
+                x_colname = fetch_groupparam("timestamp")
+                y_colname = fetch_groupparam("value")
+                missing_val = fetch_groupparam("missing_val")
+                dateformat = fetch_groupparam("dateformat")
+
+                # Build empty dataframe
+                d = setNames(data.frame(matrix(ncol = 2, nrow = nrow(data))), c("timestamp", "value"))
+                # Paste timestamp into d
+                if (!is.na(x_colname) & x_colname %in% colnames(data)) {
+                  d$timestamp = data[,x_colname]
+                }
+                # Paste values into d
+                if (!is.na(y_colname) & y_colname %in% colnames(data)) {
+                  d$value = data[,y_colname]
+                }
+                # Eventually remove missing data
+                if (!is.na(missing_val)) {
+                  d = d[as.character(d$value) != missing_val,]
+                }
+                # Eventually convert timestamp
+                if (!is.na(dateformat)) {
+                  d$timestamp <- as.Date(format(d$timestamp, scientific = FALSE), format = dateformat)
+                }
+                # Rename d columns
+                colnames(d) <- c("timestamp", dataserver$obj@name)
+                return(d)
+              })
 
               ## Create plot
               timeseries_plot = reactive({
-                d = data()
-
-                # print(head(d))
-                # print(paste("missing_val:", dataserver$obj@missing_val))
-                # print(paste("value:", dataserver$obj@value))
-                # if (all(!is.na(c(dataserver$obj@missing_val, dataserver$obj@value)))) {
-                #   d = d[dataserver$obj@value != as.numeric(dataserver$obj@missing_val),]
-                # }
-
-                d = data.frame(Zeit = d[,1], Wert = d[,2])
-                return(ggplot2::ggplot(d, ggplot2::aes(x = Zeit, y = Wert)) + ggplot2::geom_line())
-                # plot(x = data()[data()[,2]>0,1], y = data()[data()[,2]>0,2])
+                cd = clean_data()
+                colnames(cd) <- c("timestamp", "value")
+                return(ggplot2::ggplot(cd, ggplot2::aes(x = timestamp, y = value)) + ggplot2::geom_point())
               })
 
+
               # Server logic
+
               ## Observe reactive data object
               shiny::observeEvent(
                 eventExpr = dataserver$obj,
-
                 handlerExpr = {
                   print("Timeseries Server")
-                  print("---------------------------")
-                  print(dataserver$obj)
-                  print("---------------------------")
-                  if (!identical(doupdate(dataserver$obj, r$db), dataserver$obj)) {
-                    print(paste("--- Update", dataserver$obj@name, "-------"))
-                    # Write data to database. Always(!) when observe changes
-                    dataserver$obj = doupdate(dataserver$obj, r$db)
-                    # Pass updated object upwards
-                    groupserver$dataObjects[[dataserver$obj@name]] <- dataserver$obj
+                  if (!setequal(dataserver$obj@param, dataserver$oparam)) {
+                    # print(paste("--- Update", dataserver$obj@name, "-------"))
+                    #
+                    # data = get_data(r$db, obj)
+                    # dataserver$obj@head = get_head_data(r$db, obj)
+                    # dataserver$obj@param[["timestamp"]] = colnames(data)
+                    # dataserver$obj@param[["value"]] = colnames(data)
+                    # dataserver$obj@param[["valid"]] = colnames(data)
+                    # dataserver$obj@param[["colnames"]] = colnames(data)
+                    #
+                    # dataserver$obj@key = write.data(r$db, obj, data)
+                    #
+                    # # Pass updated object upwards
+                    # groupserver$dataObjects[[dataserver$obj@name]] <- dataserver$obj
+                    # # Renew oparam
+                    # dataserver$oparam <- dataserver$obj@param
                   }
                 }
               )
@@ -152,6 +189,18 @@ setMethod("boxServer",
                 # Add data to delete queue
                 groupserver$delete <- append(groupserver$delete, obj@name)
               })
+
+              ## Crasht irgendwie das Programm ...
+              # shiny::observeEvent(clean_data(), {
+              #   if (inherits(clean_data()$timestamp, "Date")) {
+              #     cd = clean_data()
+              #     if (colnames(cd)[2] %in% colnames(r$rawtable)) {
+              #       r$rawtable = r$rawtable[ , -colnames(cd)[2]]
+              #     }
+              #     # Merge in new data
+              #     r$rawtable = merge(r$rawtable, cd, by = "timestamp", all = TRUE)
+              #   }
+              # })
 
               # UI Elements
 
@@ -202,17 +251,6 @@ setMethod("boxServer",
 setMethod("doupdate",
           methods::signature(obj = "Timeseries"),
           definition = function(obj, d) {
-
-            data = get_data(d, obj)
-            obj@head = get_head_data(d, obj)
-
-            obj@param[["timestamp"]] = colnames(data)
-            obj@param[["value"]] = colnames(data)
-            obj@param[["valid"]] = colnames(data)
-            obj@param[["colnames"]] = colnames(data)
-
-            obj@key = write.data(d, obj, data)
-
             return(obj)
           })
 
@@ -223,12 +261,6 @@ setMethod("get_data",
             if (file.exists(obj@filepath)) {
               tryCatch({
                 dat = do.call(obj@readmethod, c(file = obj@filepath, obj@readparam, fill = TRUE))
-                # print(paste0("obj@value: ", obj@value))
-                # print(paste0("obj@missing_val: ", obj@missing_val))
-                # if(!(obj@missing_val == "")) {
-                #   dat2 = d[dat[,obj@value]!=obj@missing_val,]
-                #   print(dat2)
-                # }
                 return(dat)
               }, error = function(cond) {
                 print(cond)
