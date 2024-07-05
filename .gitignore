@@ -4,7 +4,7 @@
 .httr-oauth
 .DS_Store
 .quarto
-*.sqlite
+/inst/extdata/*.sqlite
 *.env
 shinyproxy-3.0.2.jar
 application.properties
