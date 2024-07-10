@@ -15,7 +15,7 @@ mod_export_ui <- function(id){
 #' export Server Functions
 #'
 #' @noRd
-mod_export_server <- function(id, r, txt){
+mod_export_server <- function(id, r){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 

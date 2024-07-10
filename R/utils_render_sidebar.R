@@ -17,15 +17,14 @@ render_sidebar <- function(apptext) {
                            icon = c("house", "file-arrow-up", "filter", "wave-square", "file-arrow-down", "gear"))
 
   # Build sidebar menu
-  sidebarmenu <- shinydashboard::renderMenu(
-    shinydashboard::sidebarMenu(
-      # Iterate over menu_items name and id
-      purrr::pmap(
-        list(menu_items$name, menu_items$id, menu_items$icon),
-        \(x, y, i) shinydashboard::menuItem(x, tabName = y, icon = shiny::icon(i))
-      )
+  sidebarmenu <- shinydashboard::sidebarMenu(
+    # Iterate over menu_items name and id
+    purrr::pmap(
+      list(menu_items$name, menu_items$id, menu_items$icon),
+      \(x, y, i) shinydashboard::menuItem(x, tabName = y, icon = shiny::icon(i))
     )
   )
+
 
   return(sidebarmenu)
 }

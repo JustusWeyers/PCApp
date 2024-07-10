@@ -1,8 +1,8 @@
 #' classData
 #'
-#' @description A fct function
+#' @description Parent class for all data related classes.
 #'
-#' @return The return value, if any, from executing the function.
+#' @return class 'Data' with specific slots as well as some generic functions
 #'
 #' @noRd
 
@@ -19,8 +19,7 @@ setClass("Data",
            filepath = "character",
            filetype = "character",
            filesize = "integer",
-           fileext = "character",
-           readparam = "list"
+           fileext = "character"
          ),
          prototype = list(
            key = NA_integer_,
@@ -32,16 +31,13 @@ setClass("Data",
            filepath = NA_character_,
            filetype = NA_character_,
            filesize = NA_integer_,
-           fileext = NA_character_,
-           readparam = list()
+           fileext = NA_character_
          ))
 
 # Generics
 
-# setGeneric("read.data", function(obj) standardGeneric("read.data"))
-
+# Every type of data has a UI in form of a shinydashboard box
 setGeneric("boxUI", function(obj) standardGeneric("boxUI"))
 
-setGeneric("boxServer", function(obj, r, groupserver, txt) standardGeneric("boxServer"))
-
-setGeneric("doupdate", function(obj, d) standardGeneric("doupdate"))
+# Every type of data has a server for the box UI
+setGeneric("boxServer", function(obj, r, group_server) standardGeneric("boxServer"))

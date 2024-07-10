@@ -209,7 +209,9 @@ setMethod("create.primarytable",
                   key            serial primary key,
                   name           VARCHAR(100) not null,
                   dtype          VARCHAR(100) not null,
-                  dgroup         NUMERIC not null
+                  dgroup         NUMERIC not null,
+                  rparam         VARCHAR(999),
+                  dparam         VARCHAR(999)
               );
             )"
             # Run command on database
@@ -227,8 +229,6 @@ setMethod("create.datagrouptable",
                   key            serial primary key,
                   name           VARCHAR(100) not null,
                   dtype          VARCHAR(100) not null,
-                  color          VARCHAR(100) not null,
-                  readmethod     VARCHAR(100) not null,
                   gparam         VARCHAR(999)
               );
             )"
@@ -263,8 +263,6 @@ setMethod("delete.data",
               # Delete groups data tables from db
               sql = paste0(r"(SELECT name FROM primary_table WHERE dgroup = ')", dataObject@key, r"(';)")
               lapply(dbGetQuery(d@con, sql)$name, function(tbl) DBI::dbRemoveTable(d@con, tbl))
-              # Delete group detail table
-              DBI::dbRemoveTable(d@con, dataObject@name)
               # Delete from primary table
               sql = paste0(r"(DELETE FROM primary_table WHERE dgroup = ')", dataObject@key, r"(';)")
               DBI::dbExecute(d@con, sql)
@@ -277,11 +275,6 @@ setMethod("delete.data",
             if (methods::is(dataObject, "Timeseries") | methods::is(dataObject, "Metadata")) {
               # Delete from primary table
               sql = paste0(r"(DELETE FROM primary_table WHERE key = ')", dataObject@key, r"(';)")
-              DBI::dbExecute(d@con, sql)
-              # Delete from group detail table
-              sql = paste0(r"(SELECT * FROM datagroup_table WHERE key = )", dataObject@dgroup, r"(;)")
-              groupname = DBI::dbGetQuery(d@con, sql)$name
-              sql = paste0(r'(DELETE FROM ")', groupname,r'(" WHERE key = )', dataObject@key, r"(;)")
               DBI::dbExecute(d@con, sql)
               # Delete table
               DBI::dbRemoveTable(d@con, dataObject@name)
@@ -319,13 +312,21 @@ setMethod("delete.row",
             DBI::dbExecute(d@con, sql)
           })
 
-setMethod("update.table",
+setMethod("change.tablevalue",
           methods::signature(d = "PostgreSQL"),
-          function (d, table, field, val, key) {
+          function (d, table, key, field, val) {
             if (is(val, "character")) {
               sql = paste0(r'(UPDATE )', table, r'( SET )', field, " = '", val, "' WHERE key = ", key, ";")
             } else {
               sql = paste0(r'(UPDATE )', table, r'( SET )', field, " = ", val, " WHERE key = ", key, ";")
             }
             DBI::dbExecute(d@con, sql)
+          })
+
+setMethod("replace.by.primary_key",
+          methods::signature(d = "PostgreSQL"),
+          function (d, table, key, values) {
+            lapply(colnames(values), function(n) {
+              change.tablevalue(d, table, key, field = n, val = values[1,n])
+            })
           })

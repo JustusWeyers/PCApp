@@ -58,7 +58,7 @@ mod_database_ui <- function(id) {
 #' @importFrom shinyThings radioSwitchButtons
 #' @importFrom shinydashboard tabBox
 
-mod_database_server <- function(id, r, txt) {
+mod_database_server <- function(id, r) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -217,12 +217,12 @@ mod_database_server <- function(id, r, txt) {
 
     ## Tab title
     output$ui_tab_title <- shiny::renderUI(
-      expr = shiny::renderText(txt[2])
+      expr = shiny::renderText(r$txt[2])
     )
 
     ## Header 1
     output$ui_header1 <- shiny::renderUI(
-      expr = shiny::titlePanel(txt[18])
+      expr = shiny::titlePanel(r$txt[18])
     )
 
     ## Database system radiobuttons
@@ -246,7 +246,7 @@ mod_database_server <- function(id, r, txt) {
       expr = shiny::textInput(
         # Text input parameters
         inputId = ns("host"),
-        label = txt[9],
+        label = r$txt[9],
         value = getElement(credentials(), "host")
       )
     )
@@ -256,7 +256,7 @@ mod_database_server <- function(id, r, txt) {
       expr = shiny::textInput(
         # Text input parameters
         inputId = ns("port"),
-        label = txt[8],
+        label = r$txt[8],
         value = getElement(credentials(), "port")
       )
     )
@@ -266,7 +266,7 @@ mod_database_server <- function(id, r, txt) {
       expr = shiny::textInput(
         # Text input parameters
         inputId = ns("user"),
-        label = txt[6],
+        label = r$txt[6],
         value = getElement(credentials(), "user")
       )
     )
@@ -276,7 +276,7 @@ mod_database_server <- function(id, r, txt) {
       expr = shiny::passwordInput(
         # Text input parameters
         inputId = ns("password"),
-        label = txt[7],
+        label = r$txt[7],
         value = getElement(credentials(), "password")
       )
     )
@@ -286,7 +286,7 @@ mod_database_server <- function(id, r, txt) {
       expr = shiny::textInput(
         # Text input parameters
         inputId = ns("dbname"),
-        label = txt[2],
+        label = r$txt[2],
         value = getElement(credentials(), "dbname")
       )
     )
@@ -301,14 +301,14 @@ mod_database_server <- function(id, r, txt) {
         # TabBox panel 1
         shiny::tabPanel(
           # TabPanel parameters
-          title = txt[22],
+          title = r$txt[22],
           # TabPanel content
           shiny::uiOutput(ns("ui_dbtype_radiobutton"))
         ),
         # TabBox panel 2
         shiny::tabPanel(
           # TabPanel parameters
-          title = txt[15],
+          title = r$txt[15],
           # TabPanel content
           shiny::fluidRow(
             # FluidRow content
@@ -347,7 +347,7 @@ mod_database_server <- function(id, r, txt) {
     output$ui_header2 <- shiny::renderUI(
       expr = shiny::titlePanel(
         # TitlePanel parameters
-        title = txt[19]
+        title = r$txt[19]
       )
     )
 
@@ -397,21 +397,21 @@ mod_database_server <- function(id, r, txt) {
         # TabBox panel 1
         shiny::tabPanel(
           # TabPanel parameters
-          title = txt[21],
+          title = r$txt[21],
           # TabPanel content
           shiny::uiOutput(ns("ui_users"))
         ),
         # TabBox panel 2
         shiny::tabPanel(
           # TabPanel parameters
-          title = txt[23],
+          title = r$txt[23],
           # TabPanel content
           shiny::uiOutput(ns("ui_tables"))
         ),
         # TabBox panel 3
         shiny::tabPanel(
           # TabPanel parameters
-          title = txt[31],
+          title = r$txt[31],
           # TabPanel content
           shiny::textOutput(ns("ui_schemas")),
           shiny::textOutput(ns("ui_searchpath"))
@@ -421,7 +421,7 @@ mod_database_server <- function(id, r, txt) {
 
     # Header 3
     output$ui_header3 <- shiny::renderUI({
-      shiny::titlePanel(txt[20])
+      shiny::titlePanel(r$txt[20])
     })
 
   })

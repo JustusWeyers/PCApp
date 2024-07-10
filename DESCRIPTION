@@ -11,10 +11,14 @@ Imports:
     colourpicker,
     config (>= 0.3.2),
     DBI,
+    dplyr,
     DT,
+    ggplot2,
     golem (>= 0.4.1),
     gplots,
     grDevices,
+    jsonlite,
+    lubridate,
     methods,
     purrr,
     RPostgres,
@@ -23,9 +27,11 @@ Imports:
     shinydashboard,
     shinyThings,
     stats,
+    stringi,
     stringr,
     tools,
-    utils
+    utils,
+    zoo
 Suggests: 
     spelling,
     testthat (>= 3.0.0)

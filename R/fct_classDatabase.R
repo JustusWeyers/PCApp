@@ -62,70 +62,67 @@ setGeneric("database.searchpath", function(d, user) standardGeneric("database.se
 ### return the tables available.
 setGeneric("user.tables", function(d) standardGeneric("user.tables"))
 
-# Write table
+## Write tabledata to db
 
-## Write a table.
+### Function adds entry to primary_table, checks which key as been assigned,
+### writes tabledata to db. Returns the assigned key.
 setGeneric("write.data", function(d, dataObject, data) standardGeneric("write.data"))
 
 ## Create primary table
 
-### Special method to create primary table with columns "key", "name" and
-### "dtype". Every user has exactly one primary table.
+### Special method to create primary_table with columns "key", "name", "dtype"
+### (data type) and "dgroup" (data group). Every user has exactly one
+### primary_table.
 setGeneric("create.primarytable", function(d, user) standardGeneric("create.primarytable"))
 
 ## Create table for data groups
 
-### Special method to create data group table with columns "key", "name",
-### "dtype" and "color".
+### Method to create datagroup_table with columns "key", "name",
+### "dtype", "color", "readmethod" and "param".
 setGeneric("create.datagrouptable", function(d, user) standardGeneric("create.datagrouptable"))
 
 ## Get table
 
+### Fetch a table by name
 setGeneric("get.table", function(d, tablename) standardGeneric("get.table"))
 
 ## Append row to table
 
+### Add a row to a database table
 setGeneric("appendto.table", function(d, table, values) standardGeneric("appendto.table"))
 
 ## Delete related database entries of an object
 
+### Delete data objects. Uses specific procedures depending on datatype
 setGeneric("delete.data", function(d, dataObject) standardGeneric("delete.data"))
 
-## Create one table for a single data group
-setGeneric("create.group_table", function(d, g) standardGeneric("create.group_table"))
+## Write a table to database
 
-## Reimplementation of DBI::dbwritetable
+### Reimplementation of DBI::dbwritetable.
 setGeneric("write.dbtable", function(d, tablename, value) standardGeneric("write.dbtable"))
 
-# Apocrypha
+## Fetch datagroup of a data object
 
-# # Delete table
-#
-# ## Delete a table.
-#
-# setGeneric("delete.dbtable", function(d, name) standardGeneric("delete.dbtable"))
-#
-# setMethod("delete.dbtable",
-#           methods::signature(d = "PostgreSQL"),
-#           function(d, name){
-#             # Delete the table from the database
-#             DBI::dbRemoveTable(d@con, name)
-#             # SQL comand to remove table row from primary table
-#             sql = paste0(r"(DELETE FROM primary_table WHERE name = ')", name, r"(';)")
-#             DBI::dbExecute(d@con, sql)
-#           })
-#
-# setMethod("delete.dbtable",
-#           methods::signature(d = "SQLite"),
-#           function(d, name){
-#             # Remove table
-#             DBI::dbRemoveTable(d@con, name)
-#             # SQL comand to remove table row from primary table
-#             sql = paste0(r"(DELETE FROM primary_table WHERE name = ')", name, r"(';)")
-#             DBI::dbExecute(d@con, sql)
-#           })
-
+### Every data object has a datagroup. The groupname will be returned.
 setGeneric("get.dgroup", function(d, dataObject) standardGeneric("get.dgroup"))
+
+## Fetch key of a data object
+
+### Every data entry in primary_table has an auto-incrementing key (primary key).
+### This key is going to be returned. The name of the data object is used to
+### identify the corresponding key in primary_table
 setGeneric("get.key", function(d, dataObject) standardGeneric("get.key"))
+
+## Delete a row in table by condition
+
+### Deletes the row in a database table where the specified field matches the
+### given condition.
 setGeneric("delete.row", function(d, table, field, cond) standardGeneric("delete.row"))
-setGeneric("update.table", function(d, table, field, val, key) standardGeneric("update.table"))
+
+## Change a a value in table by field and key
+
+### Takes a table name, the key and field to identify the cell and the replace value as
+### arguments
+setGeneric("change.tablevalue", function(d, table, key, field, val) standardGeneric("change.tablevalue"))
+
+setGeneric("replace.by.primary_key", function(d, table, key, values) standardGeneric("replace.by.primary_key"))

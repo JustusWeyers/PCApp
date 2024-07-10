@@ -21,7 +21,7 @@ mod_import_ui <- function(id){
       shiny::fluidPage(
         h1(),
         # Array for data groups
-        shiny::uiOutput(ns("ui_groupArray")),
+        shiny::uiOutput(ns("ui_group_array")),
         # Add a group
         shiny::uiOutput(ns("ui_addagroup"))
       )
@@ -41,116 +41,64 @@ mod_import_ui <- function(id){
 #'
 #' @noRd
 
-mod_import_server <- function(id, r, txt, dtype, predefined_groups = c()){
+mod_import_server <- function(id, r, dtype, predefined_groups = c()){
   shiny::moduleServer(id, function(input, output, session){
     ns <- session$ns
 
-    # Reactive values
+    ####
 
-    importserver = shiny::reactiveValues(
-      predefined_groups = predefined_groups,
-      groupObjects = NULL,
-      delete = c()
-    )
+    #################
+    ### Functions ###
+    #################
 
-    # Functions
-
-    check_predefined_groups = reactive({
-      length(importserver$predefined_groups) > 0
-    })
-
-    ## Fetch datagroup_table group infos
-    groups = reactive(r$datagroup_table[r$datagroup_table$dtype == dtype,])
-
-    ## Create groups from datagroup table
-    dataGroups = reactive({
-      # Serial instantiation
-      grouplist = purrr::pmap(
-        .l = groups(),
-        .f = function(key, name, dtype, color, readmethod, gparam) {
-          # if (is.null(gparam)) gparam = "{}"
-          # Constructor
-          methods::new(
-            "Group",
-            key = key,
-            name = name,
-            dtype = dtype,
-            color = color,
-            readmethod = readmethod,
-            gparam = jsonlite::fromJSON(gparam)
-          )
-        }
-      )
-      # Set names of grouplist
-      names(grouplist) = purrr::map_vec(grouplist, function(group) group@name)
-      return(grouplist)
-    })
-
-    # Call Group servers
-    call_group_servers = function(group_objects) {
-      lapply(
-        group_objects,
-        function(o) groupServer(o, r = r, importserver = importserver, txt = txt)
-      )
+    # Fetch group objects from database
+    get_group_objects = function () {
+      print("Get groups")
+      dgt = get.table(shiny::isolate(r$db), "datagroup_table")
+      dgt = dgt[dgt$dtype == dtype,]
+      go = lapply(dgt$key, function(key) {
+        methods::new(
+          Class = "Group",
+          key = key,
+          name = dgt[dgt$key == key, "name"],
+          dtype = dgt[dgt$key == key, "dtype"],
+          gparam = as.list(jsonlite::fromJSON(dgt[dgt$key == key, "gparam"]))
+        )
+      })
+      # Set names of groupobjects
+      go <-stats::setNames(go, dgt$name)
+      # Return fresh group objects
+      return(go)
     }
 
-    # Server logic
+    ########################
+    ### Server functions ###
+    ########################
 
-    ## Update on changes in r$primary_table or r$datagroup_table
-    shiny::observeEvent(r$datagroup_table, {
-      # (Re-) Create Groups
-      importserver$groupObjects <- dataGroups()
-      # Call group servers
-      call_group_servers(importserver$groupObjects)
-    })
+    # 1. Setup reactive values
+    import_server = reactiveValues(
+      predefined_groups = predefined_groups,
+      group_objects = shiny::isolate(get_group_objects()),
+      delete_groups = NULL
+    )
 
-    ## Delete group on changes in importserver$delete
-    shiny::observeEvent(importserver$delete, {
-      print("Delete Group")
-      # Iterate over delete queue
-      lapply(importserver$delete, function(n) {
-        # Delete from database
-        delete.data(r$db, importserver$groupObjects[[n]])
-        # Delete from groupdata
-        importserver$groupObjects[n] <- NULL
-      })
-      # Clear queue
-      importserver$delete <- c()
-    })
-
-    # Add predefined groups
+    # 2. Call group objects
     shiny::observeEvent(
-      eventExpr = importserver$predefined_groups,
+      eventExpr = import_server$group_objects,
       handlerExpr = {
-
-        # Check if there are (already existing) predefined groups
-        if (check_predefined_groups()) {
-          lapply(importserver$predefined_groups, function(gn) {
-            if (!(gn %in% names(importserver$groupObjects))) {
-              appendto.table(
-                d = r$db,
-                table = "datagroup_table",
-                values = data.frame(
-                  name = gn,
-                  dtype = dtype,
-                  color = "grey",
-                  readmethod = methods::new(dtype)@readmethod,
-                  gparam = jsonlite::toJSON(list())
-                )
-              )
-              # Update datagroup_table
-              r$datagroup_table = get.table(r$db, tablename = "datagroup_table")
-            }
-          })
-        }
+        # Call group servers
+        lapply(import_server$group_objects, function(o) {
+          groupServer(o, r = r, import_server = import_server)
+        })
     })
 
-    ## Add user groups
+    # 3. Observe "Add group"-button
     shiny::observeEvent(
       eventExpr = input$addgroup,
       handlerExpr = {
+        print("Add a  group")
         # Check if group already exists
-        if (!(input$groupname %in% c(names(importserver$groupObjects), ""))) {
+        if (!(input$groupname %in% c(names(import_server$group_objects), ""))) {
           # If groupname is valid add group to datagroup_table
           appendto.table(
             d = r$db,
@@ -158,49 +106,57 @@ mod_import_server <- function(id, r, txt, dtype, predefined_groups = c()){
             values = data.frame(
               name = input$groupname,
               dtype = dtype,
-              color = sample(grDevices::colors(), 1),
-              readmethod = methods::new(dtype)@readmethod,
-              gparam = jsonlite::toJSON(list())
+              gparam = jsonlite::toJSON(list(color = "grey"))
             )
           )
-          # Update datagroup_table
-          r$datagroup_table = get.table(r$db, tablename = "datagroup_table")
+          # Update import_server$group_objects
+          import_server$group_objects = get_group_objects()
         } else {
           print("Groupname is not valid")
         }
-      }
-    )
+    })
 
-    # UI Elements
+    # 4. Delete groups
+    shiny::observeEvent(
+      eventExpr = import_server$delete_groups,
+      handlerExpr = {
+        # Delete groups in delete queue
+        lapply(import_server$delete_groups, function(n) {
+          # Delete from database
+          delete.data(r$db, import_server$group_objects[[n]])
+          # Delete from groupdata
+          import_server$group_objects[n] <- NULL
+        })
+
+        # Clear delete queue
+        import_server$delete_groups <- c()
+    })
+
+
+    ##########
+    ### UI ###
+    ##########
 
     ## Render tab title
     output$ui_tab_title <- shiny::renderUI({
       shiny::renderText(dtype)
     })
 
-    ## Render group boxes
-    shiny::observeEvent(
-      eventExpr = importserver$groupObjects,
-      handlerExpr = {
-        # Clear group array ui
-        output$ui_groupArray <- shiny::renderUI(NULL)
-        # Iterate over groupObjects
-        output$ui_groupArray <- shiny::renderUI(
-          lapply(
-            X = importserver$groupObjects,
-            FUN = function(g) {
-              # Namespace
-              g@name <- ns(g@name)
-              groupUI(g)()
-            }
-          )
-        )
-      }
+    # Group box array
+    output$ui_group_array <- shiny::renderUI(
+      lapply(
+        X = import_server$group_objects,
+        FUN = function(g) {
+          # Namespace
+          g@name <- ns(g@name)
+          return(groupUI(g)())
+        }
+      )
     )
 
     ## Render section to add a group
     output$ui_addagroup <- shiny::renderUI(
-      if (!(check_predefined_groups())) {
+      if (length(import_server$predefined_groups) == 0) {
         fluidRow(
           col_4(
             # Column content
@@ -224,6 +180,8 @@ mod_import_server <- function(id, r, txt, dtype, predefined_groups = c()){
         )
       }
     )
+
+    ####
 
   })
 }

@@ -91,19 +91,45 @@ setMethod("user.tables",
 setMethod("write.data",
           methods::signature(d = "SQLite"),
           function(d, dataObject, data){
-            # Eventually add entry to primyary table
-            if (!(dataObject@name %in% d@tables$tablename)) {
-              DBI::dbAppendTable(d@con, "primary_table",
-                                 value =
-                                   data.frame(
-                                     name        = dataObject@name,
-                                     dtype       = dataObject@dtype,
-                                     dgroup      = dataObject@dgroup
-                                   )
-              )
+            print("write.data")
+            ### PRIMARYTABLE
+            # Eventually add entry to primary table
+            if (!(dataObject@name %in% get.table(d, "primary_table")$name))
+              DBI::dbAppendTable(
+                d@con,
+                "primary_table",
+                value = data.frame(
+                  name   = dataObject@name,
+                  dtype  = dataObject@dtype,
+                  dgroup = dataObject@dgroup
+                ))
+            # Get dataObject key from primary_table
+            dataObject@key <- get.key(d, dataObject)
+
+
+            ### DATAGROUP TABLE
+            # Create temporary object data.frame
+            attributedf = s4_to_dataframe(dataObject)
+            readparamdf = as.data.frame(dataObject@readparam)
+            objectdf = merge(attributedf, readparamdf)
+
+            # Replace row in database by new row
+            grouptablename = get.dgroup(d, dataObject)
+            grouptable = get.table(d, grouptablename)
+            common = intersect(colnames(grouptable), colnames(objectdf))
+            if (dataObject@key %in% grouptable$key) {
+              grouptable[grouptable$key == dataObject@key,common] = objectdf[,common]
+            } else {
+              grouptable[nrow(grouptable)+1,common] = objectdf[,common]
             }
-            # (Over-) write table
-            DBI::dbWriteTable(d@con, name = dataObject@name, value = data, overwrite = TRUE)
+            write.dbtable(d, grouptablename, grouptable)
+
+            ### DATA
+            # (Over-) write Table
+            if (!is.null(data)){
+              DBI::dbWriteTable(d@con, name = dataObject@name, value = data, overwrite = TRUE)
+            }
+            return(dataObject@key)
           })
 
 setMethod("create.primarytable",
@@ -115,7 +141,9 @@ setMethod("create.primarytable",
               key INTEGER PRIMARY KEY  AUTOINCREMENT,
               name           CHAR(100)  NOT NULL,
               dtype          CHAR(100)  NOT NULL,
-              dgroup         NUMERIC   NOT NULL
+              dgroup         NUMERIC   NOT NULL,
+              rparam         CHAR(999),
+              dparam         CHAR(999)
               );
             )"
             # Run command on database
@@ -133,7 +161,8 @@ setMethod("create.datagrouptable",
               name           CHAR(100)  NOT NULL,
               dtype          CHAR(100)  NOT NULL,
               color          CHAR(100)  NOT NULL,
-              readmethod     CHAR(100)  NOT NULL
+              readmethod     CHAR(100)  NOT NULL,
+              gparam         CHAR(999)
               );
             )"
             # Run command on database
@@ -164,8 +193,6 @@ setMethod("delete.data",
               # Delete groups data tables from db
               sql = paste0(r"(SELECT name FROM primary_table WHERE dgroup = ')", dataObject@key, r"(';)")
               lapply(dbGetQuery(d@con, sql)$name, function(tbl) DBI::dbRemoveTable(d@con, tbl))
-              # Delete group detail table
-              DBI::dbRemoveTable(d@con, dataObject@name)
               # Delete from primary table
               sql = paste0(r"(DELETE FROM primary_table WHERE dgroup = ')", dataObject@key, r"(';)")
               DBI::dbExecute(d@con, sql)
@@ -179,11 +206,6 @@ setMethod("delete.data",
               # Delete from primary table
               sql = paste0(r"(DELETE FROM primary_table WHERE key = ')", dataObject@key, r"(';)")
               DBI::dbExecute(d@con, sql)
-              # Delete from group detail table
-              sql = paste0(r"(SELECT * FROM datagroup_table WHERE key = )", dataObject@dgroup, r"(;)")
-              groupname = DBI::dbGetQuery(d@con, sql)$name
-              sql = paste0(r'(DELETE FROM ")', groupname,r'(" WHERE key = )', dataObject@key, r"(;)")
-              DBI::dbExecute(d@con, sql)
               # Delete table
               DBI::dbRemoveTable(d@con, dataObject@name)
             }
@@ -192,16 +214,16 @@ setMethod("delete.data",
 # Create a table for a data group containing all the groups details defined by
 # the groups datatype. Uses the utils function S4_to_dataframe(). This makes it
 # possible to create different detail tables depending on the objects slots.
-setMethod("create.group_table",
-          methods::signature(d = "SQLite"),
-          function (d, g) {
-            if (!(g@name %in% user.tables(d)$tablename)) {
-              # Convert S4 objects slots to dataframe
-              df = S4_to_dataframe(new(g@dtype))
-              # Write group detail table
-              DBI::dbWriteTable(d@con, g@name, df[0,])
-            }
-          })
+# setMethod("create.group_table",
+#           methods::signature(d = "SQLite"),
+#           function (d, g) {
+#             if (!(g@name %in% user.tables(d)$tablename)) {
+#               # Convert S4 objects slots to dataframe
+#               df = S4_to_dataframe(new(g@dtype))
+#               # Write group detail table
+#               DBI::dbWriteTable(d@con, g@name, df[0,])
+#             }
+#           })
 
 # Takes a connection, a table name and a value and writes it to the connected
 # database. Any preexisting table with the same name will be overwritten.
@@ -211,9 +233,32 @@ setMethod("write.dbtable",
             DBI::dbWriteTable(d@con, tablename, value, overwrite = TRUE)
           })
 
-setMethod("update.table",
+setMethod("get.dgroup",
           methods::signature(d = "SQLite"),
-          function (d, table, field, val, key) {
+          function (d, dataObject) {
+            sql = paste0(r"(SELECT name FROM datagroup_table WHERE key = ')", dataObject@dgroup, r"(';)")
+            g = DBI::dbGetQuery(d@con, sql)$name
+            return(g)
+          })
+
+setMethod("get.key",
+          methods::signature(d = "SQLite"),
+          function (d, dataObject) {
+            sql = paste0(r"(SELECT key FROM primary_table WHERE name LIKE ')", dataObject@name, r"(';)")
+            print(sql)
+            return(DBI::dbGetQuery(d@con, sql)$key)
+          })
+
+setMethod("delete.row",
+          methods::signature(d = "SQLite"),
+          function (d, table, field, cond) {
+            sql = paste0(r'(DELETE FROM ")', table, r'(" WHERE )', field, " = ", cond, ";")
+            DBI::dbExecute(d@con, sql)
+          })
+
+setMethod("change.tablevalue",
+          methods::signature(d = "SQLite"),
+          function (d, table, key, field, val) {
             if (is(val, "character")) {
               sql = paste0(r'(UPDATE )', table, r'( SET )', field, " = '", val, "' WHERE key = ", key, ";")
             } else {

@@ -11,16 +11,21 @@ source("R/fct_classTableData.R")
 
 setClass("Metadata",
          contains = "TableData",
+         slots = c(
+           cc = "character",
+           rparam = "list",
+           dparam = "list"
+         ),
          prototype = list(
-           param = list(
-             central_cols = list(
-               ID = "id",
-               NAME = "name",
-               LAT = NA,
-               LON = NA
-             ),
+           cc = c(
+             ID = NA_character_,
+             NAME = NA_character_,
+             LAT = NA_character_,
+             LON = NA_character_,
              missingVal = NA_character_
-           )
+           ),
+           dparam = list(),
+           rparam = list()
          )
 )
 
@@ -66,7 +71,7 @@ setMethod("boxUI",
 
 setMethod("boxServer",
           methods::signature(obj = "Metadata"),
-          definition = function(obj, r, groupserver, txt) {
+          definition = function(obj, r, group_server) {
             server <- shiny::moduleServer(obj@name, function(input, output, session) {
               ns <- session$ns
 

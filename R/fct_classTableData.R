@@ -14,8 +14,7 @@ setClass("TableData",
          slots = c(
            head = "character",
            readmethod = "character",
-           readmethods = "character",
-           param = "list"
+           readmethods = "character"
          ),
          prototype = list(
            head = "",
@@ -27,8 +26,7 @@ setClass("TableData",
              "read.delim2",
              "read.table",
              "readRDS"
-           ),
-           param = list()
+           )
          )
 )
 

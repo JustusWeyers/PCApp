@@ -2,10 +2,11 @@
 #'
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
-#' @importFrom shiny tagList tabsetPanel tabPanel h1
+#' @importFrom shiny tagList tabsetPanel
 #' @importFrom shinydashboard dashboardPage dashboardHeader dashboardSidebar
 #' @importFrom shinydashboard sidebarMenuOutput dashboardBody tabItems
-#' @importFrom shinydashboard tabItem
+#' @importFrom shinydashboard tabItem sidebarMenu
+#' @importFrom package function
 #'
 #' @noRd
 app_ui <- function(request) {
@@ -13,6 +14,8 @@ app_ui <- function(request) {
 
     # Leave this function for adding external resources
     golem_add_external_resources(),
+
+    # Dashboard structure
     shinydashboard::dashboardPage(
 
       # Header
@@ -20,8 +23,13 @@ app_ui <- function(request) {
 
       # Sidebar
       shinydashboard::dashboardSidebar(
-        shinydashboard::sidebarMenuOutput("sidebarmenu")
+        shinydashboard::sidebarMenu(
+          id="mytabs",
+          shinydashboard::sidebarMenuOutput("sidebarmenu")
+        )
       ),
+
+
 
       # Body
       shinydashboard::dashboardBody(
@@ -82,7 +90,7 @@ app_ui <- function(request) {
 #' resources inside the Shiny application.
 #'
 #' @importFrom shiny tags
-#' @importFrom golem add_resource_path activate_js favicon bundle_resources
+#' @importFrom golem add_resource_path favicon bundle_resources
 #' @noRd
 golem_add_external_resources <- function() {
   golem::add_resource_path(

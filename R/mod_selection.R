@@ -7,6 +7,8 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' @importFrom zoo na.approx
+
 mod_selection_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -19,7 +21,7 @@ mod_selection_ui <- function(id){
 #' selection Server Functions
 #'
 #' @noRd
-mod_selection_server <- function(id, r, txt){
+mod_selection_server <- function(id, r){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
@@ -38,7 +40,6 @@ mod_selection_server <- function(id, r, txt){
       }
 
       # Remove missing values
-      print(paste("missing_val:", gparam[["missing_val"]]))
       t = t[!identical(as.character(t$value), gparam[["missing_val"]]),]
 
       colnames(t) <- c("timestamp", name)
@@ -54,7 +55,6 @@ mod_selection_server <- function(id, r, txt){
         }
       )
 
-      print(t)
       return(t)
     }
     # Reactive functions
@@ -125,16 +125,12 @@ mod_selection_server <- function(id, r, txt){
       write.dbtable(r$db, "prep_table", d)
     })
 
-
-    # print(shiny::isolate(head(combi_table())))
-
-
     # UI
 
     output$daterange_ui = shiny::renderUI({
       dateRangeInput(
         ns("daterange"),
-        txt[57],
+        r$txt[57],
         start = start(),
         end = end(),
         min = start(),
@@ -146,7 +142,7 @@ mod_selection_server <- function(id, r, txt){
     output$select_groups_ui = renderUI({
       shiny::checkboxGroupInput(
         inputId = ns("select_groups"),
-        label = txt[58],
+        label = r$txt[58],
         choices = groups()$name,
         selected = groups()$name
       )

@@ -4,6 +4,9 @@
 #'
 #' @rawNamespace import(shiny, except = renderDataTable)
 #' @importFrom golem get_golem_options
+#' @importFrom shiny reactiveValues
+#' @importFrom shinydashboard renderMenu
+#'
 #' @noRd
 
 app_server <- function(input, output, session) {
@@ -19,34 +22,41 @@ app_server <- function(input, output, session) {
 
   # Language
   lang <- golem::get_golem_options("lang")
-  if (is.null(lang)) {
-    txt <- internal$apptext[["en"]]
-  } else {
-    txt <- internal$apptext[[lang]]
-  }
-
-  # Table for raw data
-  r$rawtable = setNames(data.frame(matrix(ncol = 1, nrow = 0)), "timestamp")
+  r$txt <- internal$apptext[[lang]]
 
   #########################
   ### Server UI outputs ###
   #########################
 
   # Render sidebar menu
-  output$sidebarmenu <- render_sidebar(apptext = txt[c(59, 29, 54, 55, 56, 1)])
+  output$sidebarmenu <- shinydashboard::renderMenu(
+    render_sidebar(apptext = r$txt[c(59, 29, 54, 55, 56, 1)])
+  )
 
   ####################
   ### Modular code ###
   ####################
 
+  # Home server
   mod_home_server("home")
 
-  mod_database_server("database_tab", r, txt)
-  mod_ENV_server("ENV_1")
+  # Database server (run first)
+  mod_database_server("database_tab", r)
 
-  mod_import_server("import_timeseries", r, txt, dtype = txt[25])
-  mod_import_server("import_metadata", r, txt, dtype = txt[26], predefined_groups = c("Metadata"))
-  mod_selection_server("select", r, txt)
-  mod_PCA_server("PCA", r, txt)
-  mod_export_server("export", r, txt)
+  # Import timeseries server
+  mod_import_server("import_timeseries", r, dtype = r$txt[25])
+  # Import metadata server
+  mod_import_server("import_metadata", r, dtype = r$txt[26], predefined_groups = c("Metadata"))
+
+  # Selection server
+  mod_selection_server("select", r)
+
+  # PCA server
+  mod_PCA_server("PCA", r)
+
+  # Export server
+  mod_export_server("export", r)
+
+  # ENV server
+  mod_ENV_server("ENV_1")
 }
