@@ -67,6 +67,10 @@ setMethod("connect.database",
               if (!("datagroup_table" %in% user.tables(d)$tablename)) {
                 create.datagrouptable(d, user = d@user)
               }
+              # Eventually create timeseries_table
+              if (!("timeseries_table" %in% user.tables(d)$tablename)) {
+                create.timeseriestable(d)
+              }
               # Return
               return(d)
             }
@@ -210,8 +214,10 @@ setMethod("create.primarytable",
                   name           VARCHAR(100) not null,
                   dtype          VARCHAR(100) not null,
                   dgroup         NUMERIC not null,
-                  rparam         VARCHAR(999),
-                  dparam         VARCHAR(999)
+                  rparam         VARCHAR(9999),
+                  dparam         VARCHAR(9999),
+                  head           VARCHAR(9999),
+                  id             VARCHAR(100)
               );
             )"
             # Run command on database
@@ -234,6 +240,16 @@ setMethod("create.datagrouptable",
             )"
             # Run command on database
             DBI::dbExecute(d@con, sql)
+          })
+
+setMethod("create.timeseriestable",
+          methods::signature(d = "PostgreSQL"),
+          function(d){
+            #create data frame with 0 rows and 3 columns
+            df <- data.frame(matrix(ncol = 1, nrow = 0))
+            #provide column names
+            colnames(df) <- c('timestamp')
+            DBI::dbWriteTable(d@con, "timeseries_table", df)
           })
 
 # Fetch a database table by name.

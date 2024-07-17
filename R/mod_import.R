@@ -92,7 +92,7 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
         })
     })
 
-    # 3. Observe "Add group"-button
+    # 3.1. Observe "Add group"-button
     shiny::observeEvent(
       eventExpr = input$addgroup,
       handlerExpr = {
@@ -114,6 +114,26 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
         } else {
           print("Groupname is not valid")
         }
+    })
+
+    # 3.2. Observe predefined groups
+    observeEvent(import_server$predefined_groups, {
+      lapply(import_server$predefined_groups, function(n) {
+        if (!(n %in% names(import_server$group_objects))) {
+          # If groupname is valid add group to datagroup_table
+          appendto.table(
+            d = r$db,
+            table = "datagroup_table",
+            values = data.frame(
+              name = n,
+              dtype = dtype,
+              gparam = jsonlite::toJSON(list(color = "grey"))
+            )
+          )
+          # Update import_server$group_objects
+          import_server$group_objects = get_group_objects()
+        }
+      })
     })
 
     # 4. Delete groups

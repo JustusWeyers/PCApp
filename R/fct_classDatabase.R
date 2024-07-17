@@ -81,6 +81,8 @@ setGeneric("create.primarytable", function(d, user) standardGeneric("create.prim
 ### "dtype", "color", "readmethod" and "param".
 setGeneric("create.datagrouptable", function(d, user) standardGeneric("create.datagrouptable"))
 
+setGeneric("create.timeseriestable", function(d) standardGeneric("create.timeseriestable"))
+
 ## Get table
 
 ### Fetch a table by name

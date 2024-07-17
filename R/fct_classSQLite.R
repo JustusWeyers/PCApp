@@ -142,8 +142,9 @@ setMethod("create.primarytable",
               name           CHAR(100)  NOT NULL,
               dtype          CHAR(100)  NOT NULL,
               dgroup         NUMERIC   NOT NULL,
-              rparam         CHAR(999),
-              dparam         CHAR(999)
+              rparam         CHAR(9999),
+              dparam         CHAR(9999),
+              head           CHAR(9999)
               );
             )"
             # Run command on database
@@ -167,6 +168,16 @@ setMethod("create.datagrouptable",
             )"
             # Run command on database
             DBI::dbExecute(d@con, sql)
+          })
+
+setMethod("create.timeseriestable",
+          methods::signature(d = "SQLite"),
+          function(d){
+            #create data frame with 0 rows and 3 columns
+            df <- data.frame(matrix(ncol = 1, nrow = 0))
+            #provide column names
+            colnames(df) <- c('timestamp')
+            DBI::dbWriteTable(d@con, "timeseries_table", df)
           })
 
 setMethod("get.table",

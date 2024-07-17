@@ -136,10 +136,16 @@ setMethod("groupServer",
                 return(gparam)
               }
 
-              set_gparam = function(gparam) {
+              set_gparam = function(new_gparam) {
                 db = shiny::isolate(r$db)
                 key = shiny::isolate(group_server$obj@key)
-                st = toString(jsonlite::toJSON(gparam))
+                # Discard null elements from new gparams
+                old_gparam = get_gparam()
+                new_gparam = purrr::discard(new_gparam, is.null)
+                # Replace new elements in old gparams
+                old_gparam[names(new_gparam)] <- new_gparam
+                # Write gparams
+                st = toString(jsonlite::toJSON(old_gparam))
                 st = gsub("'", "", st)
                 change.tablevalue(db, "datagroup_table", key, "gparam", st)
               }
@@ -385,20 +391,33 @@ setMethod("groupServer",
               output$ui_group_options = shiny::renderUI({
 
                 go = group_options()
+                gparam = get_gparam()
+
+                print("Render ui")
+                print(gparam)
+                print("--- go ----------")
+                print(go)
 
                 render_group_options_ui = function(le, le_name) {
+
+                  sel = ""
+
+                  if (!is.null(get_gparam()[[le_name]])) {
+                    sel = get_gparam()[[le_name]]
+                  }
+
                   if (le == "col_select") {
                     ui = shiny::selectInput(
                       inputId = ns(paste0(RANDOMADDRESS, "-", le_name)),
                       label = le_name,
                       choices = group_server$columnnames,
-                      selected = " "
+                      selected = sel
                     )
                   } else if (le == "text_input") {
                     ui = shiny::textInput(
                       inputId = ns(paste0(RANDOMADDRESS, "-", le_name)),
                       label = le_name,
-                      value = ""
+                      value = sel
                     )
                   }
                   return(ui)

@@ -23,7 +23,8 @@ setClass("Timeseries",
            dparam = "list",
            readmethod = "character",
            readmethods = "character",
-           rparam = "list"
+           rparam = "list",
+           id = "character"
          ),
          prototype = list(
            cc = list(
@@ -43,7 +44,8 @@ setClass("Timeseries",
              "read.csv",
              "read.csv2"
            ),
-           rparam = list()
+           rparam = list(),
+           id = NA_character_
          )
 )
 
@@ -122,7 +124,13 @@ setMethod("boxServer",
                 p = gparam()[names(gparam()) %in% names(optional_fun_param(rm))]
                 p[["fill"]] <- TRUE
                 p[["text"]] <- get.table(r$db, timeseries_server$obj@name)$data
-                return(do.call(rm, p))
+
+                tryCatch(expr = {
+                  return(do.call(rm, p))
+                }, error = function(e) {
+                  print(e)
+                  return(NULL)
+                })
               })
 
               data_colnames <- reactive(
@@ -172,6 +180,10 @@ setMethod("boxServer",
                 return(hlines)
               })
 
+              head_string = reactive(
+                return(paste(paste0(head_data(), "\n"), collapse = ''))
+              )
+
               clean_data = reactive({
                 if (all(c(timestamp_column(), value_column()) %in% data_colnames())) {
                   df = data.frame(
@@ -203,6 +215,11 @@ setMethod("boxServer",
                   write.dbtable(r$db, timeseries_server$obj@name, data.frame(data = stringi::stri_trans_general(readLines(file_path()), "Latin-ASCII")))
                   timeseries_server$dparam["filepath"] <- NULL
                 }
+              })
+
+              observeEvent(head_string(), {
+                st = stringr::str_trunc(head_string(), 9999)
+                change.tablevalue(r$db, "primary_table", timeseries_server$obj@key, "head", st)
               })
 
               ## _. Observe changes in group parameters

@@ -12,19 +12,28 @@ source("R/fct_classTableData.R")
 setClass("Metadata",
          contains = "TableData",
          slots = c(
-           cc = "character",
-           rparam = "list",
-           dparam = "list"
+           cc = "list",
+           dparam = "list",
+           readmethod = "character",
+           readmethods = "character",
+           rparam = "list"
          ),
          prototype = list(
-           cc = c(
-             ID = NA_character_,
-             NAME = NA_character_,
-             LAT = NA_character_,
-             LON = NA_character_,
-             missingVal = NA_character_
+           cc = list(
+             id = "col_select",
+             name = "col_select",
+             longitude = "col_select",
+             latitude = "col_select"
            ),
            dparam = list(),
+           readmethod = c(
+             "read.table"
+           ),
+           readmethods = c(
+             "read.table",
+             "read.csv",
+             "read.csv2"
+           ),
            rparam = list()
          )
 )
@@ -44,21 +53,7 @@ setMethod("boxUI",
                 ####
 
                 # The displayed box
-                shinydashboard::box(
-                  id = "box", title = obj@displayname, width = 12,
-                  collapsible = TRUE, collapsed = TRUE,
-                  # DeleteButton
-                  shiny::fluidRow(
-                    col_12(DT::DTOutput(ns("ui_table"))),
-                    col_6(),
-                    col_6(
-                      col_6(),
-                      col_6(
-                        shiny::uiOutput(ns("ui_delete_button"))
-                      )
-                    )
-                  )
-                )
+                shiny::uiOutput(ns("ui_databox"))
 
                 ####
 
@@ -77,96 +72,175 @@ setMethod("boxServer",
 
               ####
 
-              # Constants
+              ##################
+              ### Connstants ###
+              ##################
 
-              ## Generate a random name for button.
-              randomaddress = random_address()
+              RANDOMADDRESS = random_address()
 
-              # Reactive Values
+              #################
+              ### Functions ###
+              #################
 
-              dataserver = reactiveValues(
-                obj = obj
+              get_gparam = function() {
+                dgt = get.table(shiny::isolate(r$db), "datagroup_table")
+                return(as.list(jsonlite::fromJSON(dgt[dgt$key == obj@dgroup, "gparam"])))
+              }
+
+              #######################
+              ### Reactive Values ###
+              #######################
+
+              metadata_server = reactiveValues(
+                obj = obj,
+                dparam = obj@dparam,
+                gparam = get_gparam()
               )
 
-              # Reactive functions
+              ##########################
+              ### Reactive functions ###
+              ##########################
 
-              # Can-load test
-              canload = reactive({
-                print(paste0("Can load (", obj@filepath, "): ", file.exists(obj@filepath)))
-                file.exists(obj@filepath)
-              })
+              gparam = reactive(
+                metadata_server$gparam
+              )
 
-              ## Read in data
+              file_path = reactive(
+                metadata_server$dparam[["filepath"]]
+              )
+
               data = reactive({
-                get_data(r$db, dataserver$obj)
+                rm = gparam()[["readmethod"]]
+                p = gparam()[names(gparam()) %in% names(optional_fun_param(rm))]
+                p[["fill"]] <- TRUE
+                p[["text"]] <- get.table(r$db, metadata_server$obj@name)$data
+
+                tryCatch(expr = {
+                  return(do.call(rm, p))
+                }, error = function(e) {
+                  print(e)
+                  return(NULL)
+                })
               })
 
-              ## Create plot
-              timeseries_plot = reactive({
-                plot(x = 1:10, y = (1:10)**2)
-              })
-
-              # Server logic
-
-              ## Observe reactive data object
-              shiny::observeEvent(
-                eventExpr = dataserver$obj,
-                handlerExpr = {
-                  # Write data to database.
-                  dataserver$obj@key <- write.data(r$db, dataserver$obj, data())
-                  # Update data object key in groupserver
-                  groupserver$dataObjects[[dataserver$obj@name]]@key <- dataserver$obj@key
-                }
+              data_colnames <- reactive(
+                colnames(data())
               )
 
-              ## Observe Delete button
-              shiny::observeEvent(input[[paste0(randomaddress, "_delete_button")]], {
-                # Add data to delete queue
-                groupserver$delete <- append(groupserver$delete, dataserver$obj@name)
+              id_column <- reactive(
+                gparam()[["id"]]
+              )
+
+              name_column <- reactive(
+                gparam()[["name"]]
+              )
+
+              longitude <- reactive(
+                gparam()[["longitude"]]
+              )
+
+              latitude <- reactive(
+                gparam()[["latitude"]]
+              )
+
+              ids = reactive({
+                if (!is.null(id_column()) & !is.null(data_colnames())) {
+                  if (id_column() %in% data_colnames()) {
+                    return(unique(data()[,id_column()]))
+                  } else {
+                    return(NULL)
+                  }
+                }
               })
 
-              # UI Elements
+
+
+              ########################
+              ### Server functions ###
+              ########################
+
+              observeEvent(file_path(), {
+                if (!is.null(file_path())){
+                  print("# Metadata upload")
+                  write.dbtable(r$db, metadata_server$obj@name, data.frame(data = stringi::stri_trans_general(readLines(file_path()), "Latin-ASCII")))
+                  metadata_server$dparam["filepath"] <- NULL
+                }
+              })
+
+              ## _. Observe changes in group parameters
+              observeEvent(metadata_server$dparam, {
+                # Convert gparam list into json
+                st = toString(jsonlite::toJSON(metadata_server$dparam))
+                # Encoding stuff
+                st = gsub("'", "", st)
+                # Write to database
+                change.tablevalue(r$db, "primary_table", metadata_server$obj@key, "dparam", st)
+              })
+
+              observeEvent(ids(), {
+                print("--- Observe ids() ---------")
+                pt = get.table(r$db, "primary_table")
+
+                purrr::map2(pt$key, pt$head, function(k, h) {
+                  check = sapply(ids(), grepl, toString(h))
+                  if (any(check)) {
+                    change.tablevalue(r$db, "primary_table", k, "id", toString(ids()[which(check)]))
+                  }
+                })
+                print("--- finish ids ---")
+              })
+
+              # Communication
+              observeEvent(c(group_server$read_options, group_server$group_options), {
+                print("MS observed group server read options")
+                metadata_server$gparam <- get_gparam()
+                group_server$columnnames <- unique(c(group_server$columnnames, data_colnames()))
+              })
+
+              ## Observe delete button
+              shiny::observeEvent(input[[paste0(RANDOMADDRESS, "_delete_button")]], {
+                # Add data to delete queue
+                group_server$delete_data <- append(group_server$delete_data, obj@name)
+              })
+
+              ##########
+              ### UI ###
+              ##########
+
+              output$ui_table_head = DT::renderDataTable({
+                data()
+              })
 
               # Create delete Button
               output$ui_delete_button <- shiny::renderUI(
-                shiny::actionButton(ns(paste0(randomaddress, "_delete_button")), label = txt[32], width = "100%")
+                shiny::actionButton(ns(paste0(RANDOMADDRESS, "_delete_button")), label = r$txt[32], width = "100%")
               )
 
-              ## Table
+              output$ui_databox = shiny::renderUI({
+                shinydashboard::box(
+                  id = "box", title = metadata_server$obj@name, width = 12,
+                  collapsible = TRUE, collapsed = TRUE,
+                  shiny::fluidRow(
+                    col_12(
+                      DT::dataTableOutput(ns("ui_table_head")),
+                    )
+                  ),
+                  shiny::fluidRow(
+                    col_6(
+                      shiny::uiOutput(ns("ui_option_box"))
+                    ),
+                    col_2(
 
-
-              output$ui_table <- DT::renderDT({
-                DT::datatable(data(), options = list(scrollX = TRUE)) |>
-                  DT::formatStyle(groupserver$id_col, backgroundColor = "forestgreen")
+                    ),
+                    col_4(
+                      shiny::uiOutput(ns("ui_delete_button"))
+                    )
+                  )
+                )
               })
-
-              ## Preview
-              output$ui_timeseries_plot <- shiny::renderPlot(timeseries_plot())
 
               ####
 
             })
             return(server)
-          })
-
-setMethod("get_data",
-          methods::signature(obj = "Metadata"),
-          definition = function(d, obj) {
-
-            if (file.exists(obj@filepath)) {
-              tryCatch({
-                return(do.call(obj@readmethod, c(file = obj@filepath, obj@readparam)))
-              }, error = function(cond) {
-                return(data.frame())
-              })
-            } else {
-              return(get.table(d, obj@name))
-            }
-
-          })
-
-setMethod("get_cols",
-          methods::signature(obj = "Metadata"),
-          definition = function(d, obj) {
-            colnames(get_data(d, obj))
           })
