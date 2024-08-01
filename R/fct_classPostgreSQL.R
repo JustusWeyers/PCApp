@@ -61,11 +61,11 @@ setMethod("connect.database",
               )
               # Eventually create primary_table
               if (!("primary_table" %in% user.tables(d)$tablename)) {
-                create.primarytable(d, user = d@user)
+                create.primarytable(d)
               }
               # Eventually create primary_table
               if (!("datagroup_table" %in% user.tables(d)$tablename)) {
-                create.datagrouptable(d, user = d@user)
+                create.datagrouptable(d)
               }
               # Eventually create timeseries_table
               if (!("timeseries_table" %in% user.tables(d)$tablename)) {
@@ -206,7 +206,7 @@ setMethod("write.data",
 # table its unique key which serves as primary key.
 setMethod("create.primarytable",
           methods::signature(d = "PostgreSQL"),
-          function(d, user){
+          function(d){
             # SQL command to create primary table
             sql = r"(
               CREATE TABLE primary_table (
@@ -217,7 +217,10 @@ setMethod("create.primarytable",
                   rparam         VARCHAR(9999),
                   dparam         VARCHAR(9999),
                   head           VARCHAR(9999),
-                  id             VARCHAR(100)
+                  id             VARCHAR(100),
+                  clearname      VARCHAR(100),
+                  lat            VARCHAR(100),
+                  lon            VARCHAR(100)
               );
             )"
             # Run command on database
@@ -228,7 +231,7 @@ setMethod("create.primarytable",
 # data groups and takes care to give every group its unique primary key.
 setMethod("create.datagrouptable",
           methods::signature(d = "PostgreSQL"),
-          function(d, user){
+          function(d){
             # SQL command to create group table
             sql = r"(
               CREATE TABLE datagroup_table (
@@ -245,11 +248,14 @@ setMethod("create.datagrouptable",
 setMethod("create.timeseriestable",
           methods::signature(d = "PostgreSQL"),
           function(d){
-            #create data frame with 0 rows and 3 columns
-            df <- data.frame(matrix(ncol = 1, nrow = 0))
-            #provide column names
-            colnames(df) <- c('timestamp')
-            DBI::dbWriteTable(d@con, "timeseries_table", df)
+            # SQL command to create group table
+            sql = r"(
+              CREATE TABLE timeseries_table (
+                  timestamp      date
+              );
+            )"
+            # Run command on database
+            DBI::dbExecute(d@con, sql)
           })
 
 # Fetch a database table by name.
@@ -294,6 +300,9 @@ setMethod("delete.data",
               DBI::dbExecute(d@con, sql)
               # Delete table
               DBI::dbRemoveTable(d@con, dataObject@name)
+              DBI::dbRemoveTable(d@con, paste0(dataObject@name, "_clean"))
+              DBI::dbRemoveTable(d@con, paste0(dataObject@name, "_head"))
+              DBI::dbRemoveTable(d@con, paste0(dataObject@name, "_readin"))
             }
 
           })
@@ -345,4 +354,26 @@ setMethod("replace.by.primary_key",
             lapply(colnames(values), function(n) {
               change.tablevalue(d, table, key, field = n, val = values[1,n])
             })
+          })
+
+setMethod("clear.db",
+          methods::signature(d = "PostgreSQL"),
+          function (d) {
+            sql = paste("DROP TABLE ", toString(paste0('"', user.tables(d)$tablename, '"')))
+            DBI::dbExecute(d@con, sql)
+          })
+
+setMethod("merge.timeseries",
+          methods::signature(d = "PostgreSQL"),
+          function (d, names) {
+
+            # Clean table from old columns
+            sql = paste0("ALTER TABLE timeseries_table ", toString(paste("DROP COLUMN IF EXISTS", names)), ";")
+            suppressWarnings(DBI::dbExecute(d@con, sql))
+
+            # Join new columns together
+            sql = paste("SELECT * FROM timeseries_table", paste(paste("NATURAL FULL OUTER JOIN", paste0(names, "_clean")), collapse = " "), ";")
+            df = DBI::dbGetQuery(d@con, sql)
+            write.dbtable(d, "timeseries_table", df)
+            print("done")
           })

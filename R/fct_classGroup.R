@@ -28,7 +28,7 @@ setClass("Group",
            name = NA_character_,
            dtype = NA_character_,
            gparam = list(
-             color = "grey"
+             color = "#BEBEBE"
            )
          )
 )
@@ -79,6 +79,26 @@ setMethod("groupServer",
               ### Functions ###
               #################
 
+              get_gparam = function() {
+                dgt = get.table(shiny::isolate(r$db), "datagroup_table")
+                gparam = as.list(jsonlite::fromJSON(dgt[dgt$key == obj@key, "gparam"]))
+                return(gparam)
+              }
+
+              set_gparam = function(new_gparam) {
+                db = shiny::isolate(r$db)
+                key = shiny::isolate(group_server$obj@key)
+                # Discard null elements from new gparams
+                old_gparam = get_gparam()
+                new_gparam = purrr::discard(new_gparam, is.null)
+                # Replace new elements in old gparams
+                old_gparam[names(new_gparam)] <- new_gparam
+                # Write gparams
+                st = toString(jsonlite::toJSON(old_gparam))
+                st = gsub("'", "", st)
+                change.tablevalue(db, "datagroup_table", key, "gparam", st)
+              }
+
               get_data_objects = function() {
                 print("Get data objects")
                 # Fetch primarytable (pt)
@@ -109,7 +129,7 @@ setMethod("groupServer",
                 display_name = tools::file_path_sans_ext(name)
                 # Combine working name as pair of displayName and datatype
                 n = stringr::str_replace_all(display_name, "[^[:alnum:]]", "")
-                working_name = paste0(n, "_", dtype, "_", dgroup)
+                working_name = paste0("id", rlang::hash(paste0(n, "_", dtype, "_", dgroup)))
                 # File extension
                 ext = tools::file_ext(name)
 
@@ -126,29 +146,12 @@ setMethod("groupServer",
                 return(do)
               }
 
+
+
               ##########################
               ### REACTIVE FUNCTIONS ###
               ##########################
 
-              get_gparam = function() {
-                dgt = get.table(shiny::isolate(r$db), "datagroup_table")
-                gparam = as.list(jsonlite::fromJSON(dgt[dgt$key == obj@key, "gparam"]))
-                return(gparam)
-              }
-
-              set_gparam = function(new_gparam) {
-                db = shiny::isolate(r$db)
-                key = shiny::isolate(group_server$obj@key)
-                # Discard null elements from new gparams
-                old_gparam = get_gparam()
-                new_gparam = purrr::discard(new_gparam, is.null)
-                # Replace new elements in old gparams
-                old_gparam[names(new_gparam)] <- new_gparam
-                # Write gparams
-                st = toString(jsonlite::toJSON(old_gparam))
-                st = gsub("'", "", st)
-                change.tablevalue(db, "datagroup_table", key, "gparam", st)
-              }
 
               fileinput = reactive({
                 input[[paste0(RANDOMADDRESS, "_fileinput")]]
@@ -184,6 +187,14 @@ setMethod("groupServer",
                 return(l)
               })
 
+              apply_button_groupoptions = reactive({
+                input[[paste0(RANDOMADDRESS, "_applybutton")]]
+              })
+
+              apply_button_readoptions = reactive({
+                input[[paste0(RANDOMADDRESS, "_applybutton_read")]]
+              })
+
               ########################
               ### Server Functions ###
               ########################
@@ -196,8 +207,11 @@ setMethod("groupServer",
                 color = get_gparam()[["color"]],
                 group_options = NULL,
                 read_options = NULL,
-                group_options = NULL,
-                columnnames = c()
+                columnnames = c(),
+                detail_buttons = NULL,
+                delete_buttons = NULL,
+                running_boxservers = c(),
+                trigger = FALSE
               )
 
               # 2. Observe file input
@@ -226,56 +240,71 @@ setMethod("groupServer",
                 eventExpr = group_server$new_data_objects,
                 handlerExpr = {
 
-                  print("Observed group_server$new_data_objects")
+                  if(length(group_server$new_data_objects) != 0) {
 
-                  lapply(group_server$new_data_objects, function(do) {
-                    # Create primary table entry
-                    pt_entry = data.frame(
-                      name = do@name,
-                      dtype = do@dtype,
-                      dgroup = do@dgroup,
-                      rparam = toString(jsonlite::toJSON(do@rparam)),
-                      dparam = toString(jsonlite::toJSON(do@dparam))
-                    )
-                    # Append or replace
-                    if (do@name %in% group_server$pt$name) {
-                      key = group_server$pt[group_server$pt$name == do@name, "key"]
-                      replace.by.primary_key(r$db, "primary_table", key, pt_entry)
-                    } else if (is.na(do@key)) {
-                      DBI::dbAppendTable(r$db@con, "primary_table", pt_entry)
-                    } else {
-                      replace.by.primary_key(r$db, "primary_table", do@key, pt_entry)
-                    }
-                  })
+                    print(paste0("Observed new_data_objects (", obj@name, ")"))
 
-                  print("1. Get Group")
-                  group_server$new_data_objects <- get_data_objects()
+                    lapply(group_server$new_data_objects, function(do) {
+                      # Create primary table entry
+                      pt_entry = data.frame(
+                        name = do@name,
+                        dtype = do@dtype,
+                        dgroup = do@dgroup,
+                        rparam = toString(jsonlite::toJSON(do@rparam)),
+                        dparam = toString(jsonlite::toJSON(do@dparam))
+                      )
+                      # Append or replace
+                      if (do@name %in% group_server$pt$name) {
+                        key = group_server$pt[group_server$pt$name == do@name, "key"]
+                        replace.by.primary_key(r$db, "primary_table", key, pt_entry)
+                      } else if (is.na(do@key)) {
+                        DBI::dbAppendTable(r$db@con, "primary_table", pt_entry)
+                      } else {
+                        replace.by.primary_key(r$db, "primary_table", do@key, pt_entry)
+                      }
+                    })
 
-                  print("2. Lapply")
-                  # Call group servers
-                  lapply(group_server$new_data_objects, function(o) {
-                    boxServer(o, r = r, group_server = group_server)
-                  })
+                    # Fetch dataobjects
+                    group_server$new_data_objects <- get_data_objects()
 
-                  print("3. Check")
+                    # Launch data
+                    lapply(group_server$new_data_objects, function(o) {
+                      # 1. Eventually upload data
+                      if ("filepath" %in% names(o@dparam)){
+                        shiny::showNotification(paste("Insert", o@dparam$filename, "into DB"), type = "message")
+                        write.dbtable(r$db, o@name, data.frame(data = stringi::stri_trans_general(readLines(o@dparam[["filepath"]]), "Latin-ASCII")))
+                        o@dparam["filepath"] <- NULL
+                        change.tablevalue(r$db, "primary_table", o@key, "dparam", toString(jsonlite::toJSON(o@dparam)))
+                      }
+                    })
 
-                  nms <- names(group_server$new_data_objects)
-                  group_server$data_objects[nms] <- group_server$new_data_objects
-                  group_server$new_data_objects <- NULL
-
+                    # Some post processing
+                    nms <- names(group_server$new_data_objects)
+                    group_server$data_objects[nms] <- group_server$new_data_objects
+                    group_server$new_data_objects <- NULL
+                  }
               })
 
               ## 4. Observe colorpicker
               observeEvent(color_picker(), {
-                if (!is.null(is.null(color_picker()))) {
+                if (!is.null(is.null(color_picker())) & color_picker() != group_server$color) {
                   gparam = get_gparam()
                   gparam[["color"]] <- color_picker()
                   set_gparam(gparam)
+                  group_server$color <- get_gparam()[["color"]]
                 }
-                group_server$color <- get_gparam()[["color"]]
               })
 
-              ## 5. Observe read parameter inputs
+              ## 5. Observe read method input
+              observeEvent(readmethod(), {
+                gparam = get_gparam()
+                gparam[["readmethod"]] = readmethod()
+                opt <- optional_fun_param(readmethod())
+                gparam[names(opt)] <- opt
+                set_gparam(gparam)
+              })
+
+              ## 6. Observe read parameter inputs
               observeEvent(read_parameter_inputs(), {
                 if (!is.null(read_parameter_inputs())) {
                   group_server$read_options <- read_parameter_inputs()
@@ -298,14 +327,39 @@ setMethod("groupServer",
                 }
               })
 
-              ## 6. Observe read method input
-              observeEvent(readmethod(), {
-                gparam = get_gparam()
-                gparam[["readmethod"]] = readmethod()
-                set_gparam(gparam)
+              ## 6. Observe read options
+              observeEvent(apply_button_readoptions(), {
+                lapply(group_server$data_objects, function(o) {
+                  print("Data wrangling")
+                  indata = mydata(r$db, o@name, get_gparam()[["readmethod"]], get_gparam())
+                  hdata = head_data(r$db, o@name, get_gparam()[["readmethod"]], get_gparam())
+
+                  group_server$columnnames <- unique(c(group_server$columnnames, colnames(indata)))
+                  write.dbtable(r$db, paste0(o@name, "_readin"), indata)
+                  write.dbtable(r$db, paste0(o@name, "_head"), hdata)
+
+                  group_server$trigger <- !(group_server$trigger)
+
+                })
               })
 
-              ## 7. Observe delete button
+              ## 7. Observe group options
+              observeEvent(apply_button_groupoptions(), {
+                lapply(group_server$data_objects, function(o) {
+                  print("Data cleaning")
+                  indata = get.table(r$db, paste0(o@name, "_readin"))
+
+                  cldata = clean_data(indata, o@name, group_option_inputs())
+
+                  write.dbtable(r$db, paste0(o@name, "_clean"), cldata)
+
+
+                  group_server$trigger <- !(group_server$trigger)
+                })
+                merge.timeseries(r$db, names(group_server$data_objects))
+              })
+
+              ## 8. Observe delete button
               shiny::observeEvent(
                 eventExpr = input[[paste0(RANDOMADDRESS, "_deletebutton")]],
                 handlerExpr = {
@@ -315,7 +369,7 @@ setMethod("groupServer",
                 }
               )
 
-              ## 8. Delete data objects
+              ## 9. Delete data objects
               shiny::observeEvent(
                 eventExpr = group_server$delete_data,
                 handlerExpr = {
@@ -336,13 +390,49 @@ setMethod("groupServer",
               ### UI ###
               ##########
 
-              ## Array for data boxes
+              # Array for data boxes
               output$ui_boxArray = shiny::renderUI(
+
                 lapply(group_server$data_objects, function(o) {
-                  o@name <- ns(o@name) # Important
-                  boxUI(o)()}
-                )
+
+                  # Important namespace juggle
+                  oname = o@name
+                  o@name <- ns(o@name)
+
+                  # Render empty box
+                  shinydashboard::box(
+                    title = oname,
+                    width = 12, collapsible = TRUE, collapsed = TRUE,
+
+                    # Box content
+                    boxUI(o)(),
+                    fluidRow(
+                      col_2(
+                        shiny::actionButton(inputId = ns(paste0(RANDOMADDRESS, oname, "_details")), "Show Details", class = "btn-xs")
+                      )
+                    )
+                  )
+                })
               )
+
+              detail_buttons = reactive(
+                lapply(group_server$data_objects, function(o) {
+                  input[[paste0(RANDOMADDRESS, o@name, "_details")]]
+                })
+              )
+
+              observeEvent(detail_buttons(), {
+                diffi = names(setdifflist(group_server$detail_buttons, detail_buttons()))
+                group_server$detail_buttons <- detail_buttons()
+
+                if (length(diffi) == 1 & any(!(diffi %in% group_server$running_boxservers)))  {
+                  print(paste("Start", diffi, "server"))
+                  boxServer(group_server$data_objects[[diffi]], r = r, group_server = group_server)
+                  group_server$running_boxservers <- c(group_server$running_boxservers, diffi)
+                  shiny::removeUI(selector = paste0("#", ns(paste0(RANDOMADDRESS, diffi, "_details"))), session = session)
+                }
+
+              })
 
               ## File Input
               output$ui_fileinput <- shiny::renderUI(
@@ -369,10 +459,28 @@ setMethod("groupServer",
 
               ## Delete Button
               output$ui_delete_button <- shiny::renderUI(
+                if (!(obj@name %in% import_server$predefined_groups)) {
+                  shiny::actionButton(
+                    # Action button parameters
+                    inputId = ns(paste0(RANDOMADDRESS, "_deletebutton")),
+                    label = r$txt[33]
+                  )
+                }
+              )
+
+              output$ui_apply_button <- shiny::renderUI(
                 shiny::actionButton(
                   # Action button parameters
-                  inputId = ns(paste0(RANDOMADDRESS, "_deletebutton")),
-                  label = r$txt[33]
+                  inputId = ns(paste0(RANDOMADDRESS, "_applybutton")),
+                  label = r$txt[61]
+                )
+              )
+
+              output$ui_apply_button_read <- shiny::renderUI(
+                shiny::actionButton(
+                  # Action button parameters
+                  inputId = ns(paste0(RANDOMADDRESS, "_applybutton_read")),
+                  label = r$txt[61]
                 )
               )
 
@@ -389,15 +497,8 @@ setMethod("groupServer",
 
               ## UI group parameter elements
               output$ui_group_options = shiny::renderUI({
-
                 go = group_options()
                 gparam = get_gparam()
-
-                print("Render ui")
-                print(gparam)
-                print("--- go ----------")
-                print(go)
-
                 render_group_options_ui = function(le, le_name) {
 
                   sel = ""
@@ -419,6 +520,15 @@ setMethod("groupServer",
                       label = le_name,
                       value = sel
                     )
+                  } else if (le == "checkbox_input") {
+                    ui = shiny::checkboxGroupInput(
+                      inputId = ns(paste0(RANDOMADDRESS, "-", le_name)),,
+                      label = le_name,
+                      choices = group_server$measurment_status,
+                      selected = group_server$measurment_status,
+                      inline = FALSE
+                    )
+
                   }
                   return(ui)
                 }
@@ -464,8 +574,6 @@ setMethod("groupServer",
                 return(ui)
               })
 
-              #################################################################
-
               ## Group options box
               output$ui_groupoptions <- shiny::renderUI(
                 # Box with options
@@ -479,7 +587,8 @@ setMethod("groupServer",
 
                   # Box content
                   shiny::uiOutput(ns("ui_color_picker")),
-                  shiny::uiOutput(ns("ui_group_options"))
+                  shiny::uiOutput(ns("ui_group_options")),
+                  col_6(shiny::uiOutput(ns("ui_apply_button")))
                 )
               )
 
@@ -495,11 +604,10 @@ setMethod("groupServer",
                   collapsed = TRUE,
 
                   # Box content
-                  shiny::uiOutput(ns("ui_read_parameter"))
+                  shiny::uiOutput(ns("ui_read_parameter")),
+                  shiny::uiOutput(ns("ui_apply_button_read"))
                 )
               )
-
-              ##################################################################
 
               ## Input Box
               output$ui_inputBox <- shiny::renderUI(
@@ -520,15 +628,13 @@ setMethod("groupServer",
                     )
                   ),
                   shiny::fluidRow(
-                    col_6(
+                    col_4(
+                      shiny::uiOutput(ns("ui_readoptions"))
+                    ),
+                    col_4(
                       shiny::uiOutput(ns("ui_groupoptions"))
                     ),
-                    col_6(
-                      shiny::uiOutput(ns("ui_readoptions"))
-                    )
-                  ),
-                  shiny::fluidRow(
-                    col_6(
+                    col_4(
                       shiny::uiOutput(ns("ui_delete_button"))
                     )
                   )

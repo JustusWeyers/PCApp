@@ -13,7 +13,26 @@ mod_PCA_ui <- function(id){
     "PCA",
     shiny::tagList(
       shiny::fluidPage(
-        shiny::plotOutput(ns("plotPercentofVariance"))
+        # Header 1
+        shiny::uiOutput(ns("ui_header1")),
+        shinydashboard::box(
+          width = "100%", solidHeader = TRUE,
+          shiny::fluidRow(
+            col_12(
+              plotOutput(ns("pcs"))
+            )
+          )
+        ),
+        # Header 2
+        shiny::uiOutput(ns("ui_header2")),
+        shinydashboard::box(
+          width = "100%", solidHeader = TRUE,
+          shiny::fluidRow(
+            col_12(
+              plotOutput(ns("plotPercentofVariance"))
+            )
+          )
+        )
       )
     )
   )
@@ -33,10 +52,16 @@ mod_PCA_server <- function(id, r){
 
     # Functions
 
+    pcsplot = function(df) {
+      df <- reshape2::melt(df, id.vars="timestamp")
+      plot <- ggplot2::ggplot(data=df, ggplot2::aes(x=timestamp, y=value, colour = variable)) +
+        ggplot2::geom_line() +
+        ggplot2::theme_minimal()
+
+      return(plot)
+    }
+
     kommunalitaeten = function(eigenvalues){
-
-      print(eigenvalues)
-
       # Calculate percent of total variance
       pTV = eigenvalues / sum(eigenvalues) * 100
 
@@ -46,7 +71,7 @@ mod_PCA_server <- function(id, r){
       df$PC <- factor(df$PC, levels = df$PC)
 
       # Crop
-      df = df[1:(length(which(eigenvalues>=1))+1),]
+      # df = df[1:(length(which(eigenvalues>=1))+1),]
 
       p = ggplot2::ggplot(df, ggplot2::aes(x = PC, y = csum)) +
         ggplot2::geom_bar(stat="identity", col = "black", fill = "white") +
@@ -57,9 +82,11 @@ mod_PCA_server <- function(id, r){
 
     # Reactive functions
 
-    prep_table = reactive(
-      get.table(r$db, "prep_table")
-    )
+    prep_table = reactive({
+      t = get.table(r$db, "selected_timeseries")
+      t$timestamp = as.Date(t$timestamp)
+      return(t)
+    })
 
     z = reactive(
       apply(X = prep_table()[,2:ncol(prep_table())], FUN=scale, MARGIN = 2)
@@ -73,6 +100,13 @@ mod_PCA_server <- function(id, r){
       prcomp(z(), center=TRUE, scale.=TRUE, retx=TRUE)
     )
 
+    pcs = reactive({
+      pcs_ = data.frame(pca()$x)
+      pcs_$timestamp = prep_table()$timestamp
+      return(pcs_)
+    })
+
+
 
     # Server
 
@@ -82,6 +116,17 @@ mod_PCA_server <- function(id, r){
 
     output$plotPercentofVariance = renderPlot({
       kommunalitaeten(eigenvalues())
+    })
+
+    output$pcs = renderPlot({
+      pcsplot(pcs())
+    })
+
+    output$ui_header1 <- shiny::renderUI({
+      shiny::titlePanel("Principal components")
+    })
+    output$ui_header2 <- shiny::renderUI({
+      shiny::titlePanel("Communalities")
     })
 
     ####

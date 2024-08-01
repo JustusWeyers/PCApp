@@ -61,6 +61,8 @@ golem::add_utils("instantiateSQLite")
 golem::add_utils("recreateDataObjects")
 golem::add_utils("random_address")
 golem::add_utils("setdifflist")
+golem::add_utils("insert_timeseries")
+golem::add_utils("datareading")
 
 
 ## External resources

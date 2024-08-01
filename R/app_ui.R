@@ -6,7 +6,6 @@
 #' @importFrom shinydashboard dashboardPage dashboardHeader dashboardSidebar
 #' @importFrom shinydashboard sidebarMenuOutput dashboardBody tabItems
 #' @importFrom shinydashboard tabItem sidebarMenu
-#' @importFrom package function
 #'
 #' @noRd
 app_ui <- function(request) {

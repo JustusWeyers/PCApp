@@ -32,11 +32,11 @@ setMethod("connect.database",
             )
             # Eventually create primary_table
             if (!("primary_table" %in% user.tables(d)$tablename)) {
-              create.primarytable(d, user = NA)
+              create.primarytable(d)
             }
             # Eventually create primary_table
             if (!("datagroup_table" %in% user.tables(d)$tablename)) {
-              create.datagrouptable(d, user = NULL)
+              create.datagrouptable(d)
             }
             return(d)
           })
@@ -134,7 +134,7 @@ setMethod("write.data",
 
 setMethod("create.primarytable",
           methods::signature(d = "SQLite"),
-          function(d, user){
+          function(d){
             # SQL command to create primary table
             sql = r"(
               CREATE TABLE primary_table (
@@ -144,7 +144,11 @@ setMethod("create.primarytable",
               dgroup         NUMERIC   NOT NULL,
               rparam         CHAR(9999),
               dparam         CHAR(9999),
-              head           CHAR(9999)
+              head           CHAR(9999),
+              id             CHAR(100),
+              clearname      CHAR(100),
+              lat            CHAR(100),
+              lon            CHAR(100)
               );
             )"
             # Run command on database
@@ -154,7 +158,7 @@ setMethod("create.primarytable",
 
 setMethod("create.datagrouptable",
           methods::signature(d = "SQLite"),
-          function(d, user){
+          function(d){
             # SQL command to create group table
             sql = r"(
               CREATE TABLE datagroup_table (

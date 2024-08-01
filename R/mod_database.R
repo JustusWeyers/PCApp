@@ -34,7 +34,12 @@ mod_database_ui <- function(id) {
         ),
         # Header 3
         shiny::uiOutput(ns("ui_header3")),
-        shiny::fluidRow()
+        shiny::fluidRow(
+          shinydashboard::box(
+            width = 12, solidHeader = TRUE,
+            shiny::uiOutput(ns("ui_cleardb_button"))
+          )
+        )
       )
     )
   )
@@ -208,7 +213,13 @@ mod_database_server <- function(id, r) {
     )
 
 
-    ## Cleanup routine
+    observeEvent(input$clear_button, {
+      clear.db(r$db)
+      session$reload()
+    })
+
+
+    ## Cleanup routine on session ending
     cancel.onSessionEnded <- session$onSessionEnded(function() {
       shiny::reactive(DBI::dbDisconnect(r$db@con))
     })
@@ -422,6 +433,13 @@ mod_database_server <- function(id, r) {
     # Header 3
     output$ui_header3 <- shiny::renderUI({
       shiny::titlePanel(r$txt[20])
+    })
+
+    output$ui_cleardb_button <- shiny::renderUI({
+      shiny::actionButton(
+        inputId = ns("clear_button"),
+        label = r$txt[[62]]
+      )
     })
 
   })

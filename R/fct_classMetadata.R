@@ -153,19 +153,39 @@ setMethod("boxServer",
                 }
               })
 
+              clear_names = reactive({
+                if (!is.null(name_column()) & !is.null(data_colnames())) {
+                  if (name_column() %in% data_colnames()) {
+                    return(unique(data()[,name_column()]))
+                  } else {
+                    return(NULL)
+                  }
+                }
+              })
 
+              lat = reactive({
+                if (!is.null(latitude()) & !is.null(data_colnames())) {
+                  if (latitude() %in% data_colnames()) {
+                    return(unique(data()[,latitude()]))
+                  } else {
+                    return(NULL)
+                  }
+                }
+              })
+
+              lon = reactive({
+                if (!is.null(longitude()) & !is.null(data_colnames())) {
+                  if (longitude() %in% data_colnames()) {
+                    return(unique(data()[,longitude()]))
+                  } else {
+                    return(NULL)
+                  }
+                }
+              })
 
               ########################
               ### Server functions ###
               ########################
-
-              observeEvent(file_path(), {
-                if (!is.null(file_path())){
-                  print("# Metadata upload")
-                  write.dbtable(r$db, metadata_server$obj@name, data.frame(data = stringi::stri_trans_general(readLines(file_path()), "Latin-ASCII")))
-                  metadata_server$dparam["filepath"] <- NULL
-                }
-              })
 
               ## _. Observe changes in group parameters
               observeEvent(metadata_server$dparam, {
@@ -185,41 +205,25 @@ setMethod("boxServer",
                   check = sapply(ids(), grepl, toString(h))
                   if (any(check)) {
                     change.tablevalue(r$db, "primary_table", k, "id", toString(ids()[which(check)]))
+                    change.tablevalue(r$db, "primary_table", k, "clearname", toString(clear_names()[which(check)]))
+                    change.tablevalue(r$db, "primary_table", k, "lat", toString(lat()[which(check)]))
+                    change.tablevalue(r$db, "primary_table", k, "lon", toString(lon()[which(check)]))
                   }
                 })
-                print("--- finish ids ---")
               })
 
-              # Communication
-              observeEvent(c(group_server$read_options, group_server$group_options), {
-                print("MS observed group server read options")
-                metadata_server$gparam <- get_gparam()
-                group_server$columnnames <- unique(c(group_server$columnnames, data_colnames()))
+              observeEvent(ids(), {
+                r$primary_table <- get.table(r$db, "primary_table")
               })
 
-              ## Observe delete button
-              shiny::observeEvent(input[[paste0(RANDOMADDRESS, "_delete_button")]], {
-                # Add data to delete queue
-                group_server$delete_data <- append(group_server$delete_data, obj@name)
-              })
 
               ##########
               ### UI ###
               ##########
 
-              output$ui_table_head = DT::renderDataTable({
-                data()
-              })
-
-              # Create delete Button
-              output$ui_delete_button <- shiny::renderUI(
-                shiny::actionButton(ns(paste0(RANDOMADDRESS, "_delete_button")), label = r$txt[32], width = "100%")
-              )
-
               output$ui_databox = shiny::renderUI({
                 shinydashboard::box(
-                  id = "box", title = metadata_server$obj@name, width = 12,
-                  collapsible = TRUE, collapsed = TRUE,
+                  solidHeader = TRUE, width = 12,
                   shiny::fluidRow(
                     col_12(
                       DT::dataTableOutput(ns("ui_table_head")),
@@ -227,13 +231,12 @@ setMethod("boxServer",
                   ),
                   shiny::fluidRow(
                     col_6(
-                      shiny::uiOutput(ns("ui_option_box"))
+                      DT::renderDataTable({
+                        data()
+                      })
                     ),
                     col_2(
 
-                    ),
-                    col_4(
-                      shiny::uiOutput(ns("ui_delete_button"))
                     )
                   )
                 )

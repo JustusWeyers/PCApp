@@ -73,13 +73,13 @@ setGeneric("write.data", function(d, dataObject, data) standardGeneric("write.da
 ### Special method to create primary_table with columns "key", "name", "dtype"
 ### (data type) and "dgroup" (data group). Every user has exactly one
 ### primary_table.
-setGeneric("create.primarytable", function(d, user) standardGeneric("create.primarytable"))
+setGeneric("create.primarytable", function(d) standardGeneric("create.primarytable"))
 
 ## Create table for data groups
 
 ### Method to create datagroup_table with columns "key", "name",
 ### "dtype", "color", "readmethod" and "param".
-setGeneric("create.datagrouptable", function(d, user) standardGeneric("create.datagrouptable"))
+setGeneric("create.datagrouptable", function(d) standardGeneric("create.datagrouptable"))
 
 setGeneric("create.timeseriestable", function(d) standardGeneric("create.timeseriestable"))
 
@@ -128,3 +128,8 @@ setGeneric("delete.row", function(d, table, field, cond) standardGeneric("delete
 setGeneric("change.tablevalue", function(d, table, key, field, val) standardGeneric("change.tablevalue"))
 
 setGeneric("replace.by.primary_key", function(d, table, key, values) standardGeneric("replace.by.primary_key"))
+
+setGeneric("clear.db", function(d) standardGeneric("clear.db"))
+
+setGeneric("merge.timeseries", function(d, names) standardGeneric("merge.timeseries"))
+

@@ -24,6 +24,9 @@ app_server <- function(input, output, session) {
   lang <- golem::get_golem_options("lang")
   r$txt <- internal$apptext[[lang]]
 
+  # tmap settings
+  # tmap::tmap_mode("plot")
+
   #########################
   ### Server UI outputs ###
   #########################
@@ -37,7 +40,7 @@ app_server <- function(input, output, session) {
   ### Modular code ###
   ####################
 
-  # Home server
+    # Home server
   mod_home_server("home")
 
   # Database server (run first)
@@ -59,4 +62,5 @@ app_server <- function(input, output, session) {
 
   # ENV server
   mod_ENV_server("ENV_1")
+
 }

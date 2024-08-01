@@ -30,19 +30,20 @@ setClass("Timeseries",
            cc = list(
              timestamp = "col_select",
              value = "col_select",
-             # valid = "col_text_select",
+             # valid_column = "col_select",
+             # valid_status = "checkbox_input",
              # colnames = NA_character_,
              missing_val = "text_input",
              dateformat = "text_input"
            ),
            dparam = list(),
            readmethod = c(
-             "read.table"
+             "read.csv"
            ),
            readmethods = c(
-             "read.table",
              "read.csv",
-             "read.csv2"
+             "read.csv2",
+             "read.table"
            ),
            rparam = list(),
            id = NA_character_
@@ -80,6 +81,7 @@ setMethod("boxServer",
             server <- shiny::moduleServer(obj@name, function(input, output, session) {
               ns <- session$ns
 
+
               ####
 
               ##################
@@ -97,6 +99,14 @@ setMethod("boxServer",
                 return(as.list(jsonlite::fromJSON(dgt[dgt$key == obj@dgroup, "gparam"])))
               }
 
+              meta_infos = function() {
+                infos = c("id", "clearname", "lat", "lon")
+                l = lapply(infos, function (i) {
+                  r$primary_table[r$primary_table$key == obj@key, i]
+                })
+                return(stats::setNames(l, infos))
+              }
+
               #######################
               ### Reactive Values ###
               #######################
@@ -104,7 +114,8 @@ setMethod("boxServer",
               timeseries_server = reactiveValues(
                 obj = obj,
                 dparam = obj@dparam,
-                gparam = get_gparam()
+                gparam = get_gparam(),
+                data = NULL
               )
 
               ##########################
@@ -115,26 +126,30 @@ setMethod("boxServer",
                 timeseries_server$gparam
               )
 
-              file_path = reactive(
-                timeseries_server$dparam[["filepath"]]
-              )
+              data = function(d, name) {
+                if (paste0(name, "_clean") %in% user.tables(d)$tablename) {
+                  t = get.table(d, paste0(name, "_clean"))
+                  t$timestamp = as.Date(t$timestamp)
+                  return(t)
+                }
+              }
 
-              data = reactive({
-                rm = gparam()[["readmethod"]]
-                p = gparam()[names(gparam()) %in% names(optional_fun_param(rm))]
-                p[["fill"]] <- TRUE
-                p[["text"]] <- get.table(r$db, timeseries_server$obj@name)$data
+              head_data = function (d, name) {
+                if (paste0(name, "_head") %in% user.tables(d)$tablename) {
+                  hlines = get.table(d, paste0(name, "_head"))$data
+                  if (length(hlines)>30) {
+                    hlines = c(head(hlines, n = 30), "...")
+                  }
+                  # Create string
+                  txt = toString(paste0(hlines, "\n")) #, collapse = '')
+                  # Return string containing head lines
+                  return(txt)
+                }
+              }
 
-                tryCatch(expr = {
-                  return(do.call(rm, p))
-                }, error = function(e) {
-                  print(e)
-                  return(NULL)
-                })
-              })
 
               data_colnames <- reactive(
-                colnames(data())
+                colnames(data(r$db, obj@name))
               )
 
               timestamp_column <- reactive(
@@ -154,91 +169,112 @@ setMethod("boxServer",
               )
 
               plot <- reactive(
-                ggplot2::ggplot(data = clean_data(), ggplot2::aes(x = timestamp, y = value)) +
-                  ggplot2::geom_point()
+                if (!is.null(timeseries_server$data)) {
+                  d = timeseries_server$data
+                  colnames(d) = c("timestamp", "value")
+                  ggplot2::ggplot(data = d, ggplot2::aes(x = timestamp, y = value)) +
+                    ggplot2::geom_point() +
+                    ggplot2::theme_minimal()
+                }
               )
 
-              head_data = reactive({
-                l = get.table(r$db, timeseries_server$obj@name)$data
-                # The headlines to come
-                hlines = c()
-                # Add headlines based on 'skip'
-                if ("skip" %in% names(gparam())) {
-                  skip = getElement(gparam(), "skip")
-                  hlines = c(hlines, 1:skip)
-                }
-                # Add headlines based on 'comment.char'
-                if ("comment.char" %in% names(gparam())) {
-                  c.char = getElement(gparam(), "comment.char")
-                  hlines = c(hlines, which(startsWith(l, c.char)))
-                }
-                # Filter for hlines
-                hlines = l[unique(hlines)]
-                # Clean up messy characters
-                hlines = sapply(hlines, stringi::stri_trans_general, id = "Latin-ASCII")
-                # Clean up messy characters
-                return(hlines)
+              title = reactive({
+                tryCatch({
+                  if (!is.na(meta_infos()[["id"]]) & !is.na(meta_infos()[["clearname"]])) {
+                    return(paste0(meta_infos()[["clearname"]], " (", meta_infos()[["id"]], ")"))
+                  } else {
+                    return(obj@name)
+                  }
+                }, error = function(e)
+                  return(obj@name)
+                )
+              })
+              #
+              # lat = reactive({
+              #   tryCatch({
+              #     as.numeric(meta_infos()[["lat"]])
+              #   }, error = function(e) {
+              #     return(NULL)
+              #   })
+              # })
+              #
+              # lon = reactive({
+              #   tryCatch({
+              #     as.numeric(meta_infos()[["lon"]])
+              #   }, error = function(e) {
+              #     return(NULL)
+              #   })
+              # })
+              #
+              # shp = reactive(
+              #   sf::st_as_sf(
+              #     data.frame(
+              #       name = meta_infos()[["clearname"]],
+              #       lat = lat(),
+              #       lon = lon()),
+              #     coords = c("lon","lat"),
+              #     crs = sf::st_crs(25832))
+              # )
+              #
+              # location_plot = reactive({
+              #   leaflet::leaflet(data = sf::st_transform(shp(), '+proj=longlat +datum=WGS84')) |>
+              #     leaflet::addTiles() |>
+              #     leaflet::addCircleMarkers()
+              # })
+              #
+              #
+              # ########################
+              # ### Server functions ###
+              # ########################
+
+              print("TS Server is on air")
+
+              observeEvent(group_server$trigger, {
+                timeseries_server$data <- data(r$db, obj@name)
+                timeseries_server$headdata <- head_data(r$db, obj@name)
               })
 
-              head_string = reactive(
-                return(paste(paste0(head_data(), "\n"), collapse = ''))
-              )
-
-              clean_data = reactive({
-                if (all(c(timestamp_column(), value_column()) %in% data_colnames())) {
-                  df = data.frame(
-                    timestamp = data()[,timestamp_column()],
-                    value = data()[,value_column()]
-                  )
-                } else {
-                  df = data.frame(timestamp = c(), value = c())
-                }
-                # Eventually remove missing data
-                if (!is.null(missing_val())) {
-                  df = df[as.character(df$value) != missing_val(),]
-                }
-                # Eventually convert timestamp
-                if (!is.null(dateformat())) {
-                  df$timestamp <- as.Date(format(df$timestamp, scientific = FALSE), format = dateformat())
-                }
-                return(df)
-              })
-
-              ########################
-              ### Server functions ###
-              ########################
-
-              observeEvent(file_path(), {
-                print("HEEEEREEEE")
-                if (!is.null(file_path())){
-                  print("# Upload")
-                  write.dbtable(r$db, timeseries_server$obj@name, data.frame(data = stringi::stri_trans_general(readLines(file_path()), "Latin-ASCII")))
-                  timeseries_server$dparam["filepath"] <- NULL
-                }
-              })
-
-              observeEvent(head_string(), {
-                st = stringr::str_trunc(head_string(), 9999)
-                change.tablevalue(r$db, "primary_table", timeseries_server$obj@key, "head", st)
-              })
-
-              ## _. Observe changes in group parameters
-              observeEvent(timeseries_server$dparam, {
-                # Convert gparam list into json
-                st = toString(jsonlite::toJSON(timeseries_server$dparam))
-                # Encoding stuff
-                st = gsub("'", "", st)
-                # Write to database
-                change.tablevalue(r$db, "primary_table", timeseries_server$obj@key, "dparam", st)
-              })
-
-              # Communication
-              observeEvent(c(group_server$read_options, group_server$group_options), {
-                print("TS observed group server read options")
-                timeseries_server$gparam <- get_gparam()
-
-                group_server$columnnames <- unique(c(group_server$columnnames, data_colnames()))
-              })
+              #
+              # observeEvent(file_path(), {
+              #   if (!is.null(file_path())){
+              #     shiny::showNotification(paste("Upload", timeseries_server$dparam$filename), type = "message")
+              #     write.dbtable(r$db, timeseries_server$obj@name, data.frame(data = stringi::stri_trans_general(readLines(file_path()), "Latin-ASCII")))
+              #     timeseries_server$dparam["filepath"] <- NULL
+              #   }
+              # })
+              #
+              # observeEvent(head_string(), {
+              #   st = stringr::str_trunc(head_string(), 9999)
+              #   change.tablevalue(r$db, "primary_table", timeseries_server$obj@key, "head", st)
+              # })
+              #
+              #
+              # ## _. Observe changes in group parameters
+              # observeEvent(timeseries_server$dparam, {
+              #   # Convert gparam list into json
+              #   st = toString(jsonlite::toJSON(timeseries_server$dparam))
+              #   # Encoding stuff
+              #   st = gsub("'", "", st)
+              #   # Write to database
+              #   change.tablevalue(r$db, "primary_table", timeseries_server$obj@key, "dparam", st)
+              # })
+              #
+              # # Communication
+              # observeEvent(clean_data(), {
+              #   print("TS Merge")
+              #   insert_timeseries(r$db, timeseries_server$obj@name, clean_data())
+              # })
+              #
+              # observeEvent(c(group_server$read_options, group_server$group_options), {
+              #   print("TS observed gparam")
+              #   timeseries_server$gparam <- get_gparam()
+              # })
+              #
+              # observeEvent(c(group_server$read_options, group_server$group_options), {
+              #   print("TS columns")
+              #   group_server$columnnames <- unique(c(group_server$columnnames, data_colnames()))
+              # })
+              #
 
               ## Observe delete button
               shiny::observeEvent(input[[paste0(RANDOMADDRESS, "_delete_button")]], {
@@ -251,49 +287,50 @@ setMethod("boxServer",
               ##########
 
               output$ui_table_head = shiny::renderTable({
-                head(data())
+                d = timeseries_server$data
+                d$timestamp = as.character(d$timestamp)
+                return(head(d))
               })
 
               output$ui_headdata = shiny::renderText({
-                hlines = head_data()
-                if (length(hlines)>30) {
-                  hlines = c(head(hlines, n = 30), "...")
-                }
-                # Create string
-                txt = paste(paste0(hlines, "\n"), collapse = '')
-                # Return string containing head lines
-                return(txt)
+                timeseries_server$headdata
               })
 
               output$ui_timeseries_plot <- shiny::renderPlot(
                 plot()
               )
 
-              # Create delete Button
+              output$ui_location_plot <- leaflet::renderLeaflet(
+                location_plot()
+              )
+
+              output$ui_mapbox <- shiny::renderUI(
+                shinydashboard::box(
+                  id = "box", title = r$txt[60], width = 12,
+                  collapsible = TRUE, collapsed = TRUE,
+
+                  leaflet::leafletOutput(ns("ui_location_plot"))
+                )
+              )
+
               output$ui_delete_button <- shiny::renderUI(
                 shiny::actionButton(ns(paste0(RANDOMADDRESS, "_delete_button")), label = r$txt[32], width = "100%")
               )
 
               output$ui_databox = shiny::renderUI({
-                shinydashboard::box(
-                  id = "box", title = timeseries_server$obj@name, width = 12,
-                  collapsible = TRUE, collapsed = TRUE,
-                  # DeleteButton
-                  shiny::fluidRow(
-                    col_4(
-                      h3(r$txt[51]),
-                      shiny::textOutput(ns("ui_headdata")),
-                      h3(r$txt[52]),
-                      shiny::tableOutput(ns("ui_table_head")),
-                      shiny::uiOutput(ns("ui_option_box"))
-                    ),
-                    col_8(
-                      shiny::plotOutput(ns("ui_timeseries_plot")),
-                      col_6(),
-                      col_6(
-                        shiny::uiOutput(ns("ui_delete_button"))
-                      )
-                    )
+                shiny::fluidRow(
+                  col_4(
+                    h3(r$txt[51]),
+                    shiny::textOutput(ns("ui_headdata")),
+                    h3(r$txt[52]),
+                    shiny::tableOutput(ns("ui_table_head")),
+                    shiny::uiOutput(ns("ui_option_box"))
+                  ),
+                  col_8(
+                    shiny::plotOutput(ns("ui_timeseries_plot")),
+                    shiny::uiOutput(ns("ui_mapbox")),
+                    shiny::uiOutput(ns("ui_delete_button"))
+
                   )
                 )
               })

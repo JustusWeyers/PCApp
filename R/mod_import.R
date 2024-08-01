@@ -106,13 +106,13 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
             values = data.frame(
               name = input$groupname,
               dtype = dtype,
-              gparam = jsonlite::toJSON(list(color = "grey"))
+              gparam = jsonlite::toJSON(list(color = "#BEBEBE"))
             )
           )
           # Update import_server$group_objects
           import_server$group_objects = get_group_objects()
         } else {
-          print("Groupname is not valid")
+          shiny::showNotification(paste(input$groupname, "already exists"), type = "error")
         }
     })
 
