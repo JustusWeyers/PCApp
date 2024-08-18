@@ -63,6 +63,7 @@ golem::add_utils("random_address")
 golem::add_utils("setdifflist")
 golem::add_utils("insert_timeseries")
 golem::add_utils("datareading")
+golem::add_utils("join_timeseries_with_metadata")
 
 
 ## External resources

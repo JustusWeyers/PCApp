@@ -1,20 +1,21 @@
 #' The application User-Interface
 #'
 #' @param request Internal parameter for `{shiny}`.
-#'     DO NOT REMOVE.
+#'
 #' @importFrom shiny tagList tabsetPanel
 #' @importFrom shinydashboard dashboardPage dashboardHeader dashboardSidebar
 #' @importFrom shinydashboard sidebarMenuOutput dashboardBody tabItems
 #' @importFrom shinydashboard tabItem sidebarMenu
 #'
 #' @noRd
+
 app_ui <- function(request) {
   shiny::tagList(
 
     # Leave this function for adding external resources
     golem_add_external_resources(),
 
-    # Dashboard structure
+    # Dashboard framework
     shinydashboard::dashboardPage(
 
       # Header
@@ -27,8 +28,6 @@ app_ui <- function(request) {
           shinydashboard::sidebarMenuOutput("sidebarmenu")
         )
       ),
-
-
 
       # Body
       shinydashboard::dashboardBody(

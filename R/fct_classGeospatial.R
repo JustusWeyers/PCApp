@@ -1,7 +1,19 @@
-#' classGeospatial 
+#' classGeospatial
 #'
-#' @description A fct function
+#' This class inherits from class Data.
 #'
-#' @return The return value, if any, from executing the function.
+#' @description Definition of a data class for geospatial objects.
+#'
+#' @return An S4 class
 #'
 #' @noRd
+
+setClass("GeoSpatialData",
+         contains = "Data",
+         slots = c(
+           EPSG = "character"
+         ),
+         prototype = list(
+           EPSG = NA_character_
+         )
+)

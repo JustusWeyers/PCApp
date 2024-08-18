@@ -35,7 +35,7 @@ mod_selection_ui <- function(id){
             shiny::uiOutput(ns("ui_daterange_input"))
           ),
           col_10(
-            shiny::plotOutput(ns("lint"), height = 200)
+            shiny::plotOutput(ns("proportions_plot"), height = 200)
           )
         )
       ),
@@ -57,67 +57,73 @@ mod_selection_server <- function(id, r){
 
     ####
 
+    #################
+    ### Functions ###
+    #################
+
+    # Get selection parameter
     get_sparam = function(d) {
-      if ("selection_table" %in% user.tables(d)) {
-        get.table(d, "selection_table")
-      } else return(list())
+      if ("selection_table" %in% user.tables(d)$tablename) {
+        jsonlite::fromJSON(get.table(d, "selection_table")$sparam)
+      } else return(NULL)
     }
 
-    # Reactive values
-    selection_server = reactiveValues(
-      sparam = get_sparam(shiny::isolate(r$db))
+    ##########################
+    ### Reactive functions ###
+    ##########################
+
+    cache_button = reactive(
+      input[["cache_selection_button"]]
     )
 
-    primary_table = reactive({
-      get.table(r$db, "primary_table")
-    })
+    first_obs = reactive(
+      if (length(selection_server$combimatrix$timestamp)>0) {
+        utils::head(selection_server$combimatrix$timestamp, n = 1)
+      }
+    )
 
-    datagroup_table = reactive({
-      get.table(r$db, "datagroup_table")
-    })
+    last_obs = reactive(
+      if (length(selection_server$combimatrix$timestamp)>0) {
+        utils::tail(selection_server$combimatrix$timestamp, n = 1)
+      }
+    )
 
+    #######################
+    ### "Data Pipeline" ###
+    #######################
+
+    # 1. Names of available groups
+    # Returns a data.frame with key, name, dtype and gparam columns
     groups = reactive({
-      datagroup_table()[datagroup_table()$dtype == "Timeseries",]
+      selection_server$datagroup_table[selection_server$datagroup_table$dtype == "Timeseries",]
     })
 
+    # 2. Subset the groups() data.frame by checkbox user input
     selected_groups = reactive({
-      selection = groups()[groups()$name %in% input$group_checkboxes,]
-      if (length(selection$name) > 0) {
-        selection_server$sparam[["selected_groups"]] <- selection$name
-      }
-      return(selection)
+      groups()[groups()$name %in% input$group_checkboxes,]
     })
 
-    tables = reactive({
-      if (length(selected_groups())>0) {
-        l = lapply(groups()$key, function(k){
-          primary_table()[primary_table()$dgroup == k,"name"]
-        })
-        return(setNames(l, selected_groups()$name))
-      }
+    # 3. Gather the names of timeseries for each group. Result is beeing
+    # returned as named list
+    groups_and_names = reactive({
+      keys = selected_groups()$key
+      names = selected_groups()$name
+      l = lapply(keys, function(k) selection_server$primary_table[selection_server$primary_table$dgroup == k,"name"])
+      return(stats::setNames(l, names))
     })
 
-    # Combination of selected groups in one data.frame
-    combimatrix <- reactive({
-      get.table(r$db, "timeseries_table")
-    })
-
-    data_list = reactive({
-      l = lapply(tables(), function(nms) {
-        combimatrix()[,c("timestamp", nms)]
-      })
-      return(setNames(l, names(tables())))
-    })
-
-    output$groupcheckboxes <- shiny::renderUI({
-      shiny::checkboxGroupInput(ns("group_checkboxes"), label = NULL, choices = groups()$name, selected = groups()$name)
-    })
+    # 4. Returns a list which contains timeseries data.frames for chosen groups
+    data_list = reactive(
+      stats::setNames(lapply(unname(groups_and_names()), function(nms) {
+        selection_server$combimatrix[,c("timestamp", nms)]
+      }), names(groups_and_names()))
+    )
 
     # Filled missing dates
     combimatrix_filled = reactive({
       if (!is.null(first_obs()) & !is.null(last_obs())) {
         dates = data.frame(timestamp = seq(as.Date(first_obs()), as.Date(last_obs()), by = "days"))
-        d = purrr::reduce(.x = list(combimatrix(), dates), .f = dplyr::full_join, by = "timestamp")
+        d = purrr::reduce(.x = list(selection_server$combimatrix, dates), .f = dplyr::full_join, by = "timestamp")
         d = d[order(d$timestamp),]
         return(d)
       }
@@ -147,17 +153,6 @@ mod_selection_server <- function(id, r){
       }
     })
 
-    first_obs = reactive({
-      if (length(combimatrix()$timestamp)>0) {
-        head(combimatrix()$timestamp, n = 1)
-      }
-    })
-
-    last_obs = reactive({
-      if (length(combimatrix()$timestamp)>0) {
-        tail(combimatrix()$timestamp, n = 1)
-      }
-    })
 
     colors = reactive({
       if (length(selected_groups()$key)>0) {
@@ -166,34 +161,58 @@ mod_selection_server <- function(id, r){
       }
     })
 
-    plot_proportions = reactive({
-      if (length(selected_groups())>0 & !is.null(colors())) {
-        plotdf = lapply(tables(), function(nms) length(nms[nms %in% colnames(nafree())]))
-        plotdf = data.frame(group = names(tables()), occurences = unname(unlist(plotdf)))
-        plotdf = merge(plotdf, colors(), by = "group")
 
-        p = ggplot2::ggplot(data=plotdf, ggplot2::aes(x=group, y=occurences, fill = color)) +
-          ggplot2::geom_bar(stat="identity") +
-          ggplot2::scale_fill_manual(values = rev(plotdf$color)) +
-          ggplot2::ggtitle("Number of available timeseries") +
-          ggplot2::ylab("Number") +
-          ggplot2::coord_flip() +
-          ggplot2::theme_minimal() +
-          ggplot2::theme(
-            plot.title = ggplot2::element_text(face="bold", size = 15),
-            axis.title.y=ggplot2::element_blank(),
-            plot.title.position = "plot",
-            legend.position="none"
-          )
-        return(p)
+    ####################
+    ### Server logic ###
+    ####################
+
+    # Reactive values
+    selection_server = reactiveValues(
+      sparam = get_sparam(shiny::isolate(r$db)),
+      combimatrix = get.table(shiny::isolate(r$db), "timeseries_table"),
+      primary_table = get.table(shiny::isolate(r$db), "primary_table"),
+      datagroup_table = get.table(shiny::isolate(r$db), "datagroup_table")
+    )
+
+    observeEvent(r$import_trigger, {
+      selection_server$primary_table <- get.table(r$db, "primary_table")
+      selection_server$datagroup_table <- get.table(r$db, "datagroup_table")
+      selection_server$combimatrix <- get.table(r$db, "timeseries_table")
+    })
+
+    shiny::observeEvent(input$daterange, {
+      selection_server$sparam[["start"]] <- input$daterange[1]
+      selection_server$sparam[["end"]] <- input$daterange[2]
+    })
+
+    shiny::observeEvent(cache_button(), {
+      if (length(selection_server$sparam)>0) {
+        write.dbtable(r$db, "selection_table", data.frame(sparam = toString(jsonlite::toJSON(selection_server$sparam))))
       }
+      write.dbtable(r$db, "selected_timeseries", nafree())
+    })
+
+    shiny::observeEvent(cache_button(), {
+      print("Pressi")
+    })
+
+
+    ###################
+    ### UI Elements ###
+    ###################
+
+    output$groupcheckboxes <- shiny::renderUI({
+      shiny::checkboxGroupInput(ns("group_checkboxes"), label = NULL, choices = groups()$name, selected = groups()$name)
     })
 
     output$tabs <- renderUI({
       tabs <- lapply(input$group_checkboxes, function(g) {
-        tabPanel(g, fluidRow(col_12(
-          DT::renderDataTable(data_list()[[g]]),
-          style = "overflow-x: scroll;")
+        tabPanel(
+          g,
+          fluidRow(
+            col_12(
+              DT::renderDataTable(data_list()[[g]], options = list(scrollX = TRUE))
+            )
           )
         )
       })
@@ -210,7 +229,7 @@ mod_selection_server <- function(id, r){
     })
 
     output$ui_daterange_input <- shiny::renderUI({
-      print(selection_server$sparam)
+      print("Render daterange")
       if (all(c("start", "end") %in% names(selection_server$sparam))) {
         start = selection_server$sparam[["start"]]
         end = selection_server$sparam[["end"]]
@@ -218,15 +237,34 @@ mod_selection_server <- function(id, r){
         start = first_obs()
         end = last_obs()
       }
-      print(c(start, end))
-      shiny::dateRangeInput(inputId = ns("daterange"), start = start,
-                            label = NULL,
-                            end = end, min = first_obs(),
-                            max = last_obs(), language = "en")
+      shiny::dateRangeInput(
+        inputId = ns("daterange"), start = start, label = NULL,
+        end = end, min = first_obs(), max = last_obs(),
+        language = "en"
+      )
     })
 
-    output$lint <- shiny::renderPlot(
-      plot_proportions()
+    output$proportion_plot <- shiny::renderPlot(
+      if (length(selected_groups())>0 & !is.null(colors())) {
+        plotdf = lapply(groups_and_names(), function(nms) length(nms[nms %in% colnames(nafree())]))
+        plotdf = data.frame(group = names(groups_and_names()), occurences = unname(unlist(plotdf)))
+        plotdf = merge(plotdf, colors(), by = "group")
+
+        p = ggplot2::ggplot(data=plotdf, ggplot2::aes(x=group, y = occurences, fill = color)) +
+          ggplot2::geom_bar(stat="identity") +
+          ggplot2::scale_fill_manual(values = rev(plotdf$color)) +
+          ggplot2::ggtitle("Number of available timeseries") +
+          ggplot2::ylab("Number") +
+          ggplot2::coord_flip() +
+          ggplot2::theme_minimal() +
+          ggplot2::theme(
+            plot.title = ggplot2::element_text(face="bold", size = 15),
+            axis.title.y=ggplot2::element_blank(),
+            plot.title.position = "plot",
+            legend.position="none"
+          )
+        return(p)
+      }
     )
 
     output$ui_header3 <- shiny::renderUI({
@@ -234,27 +272,11 @@ mod_selection_server <- function(id, r){
     })
 
     output$cachebutton <- shiny::renderUI({
-      shiny::actionButton(ns("cache_selection_button"), label = "Cache selected data")
+      shiny::actionButton(
+        inputId = ns("cache_selection_button"),
+        label = "Cache selected data")
     })
 
-    cache_button = reactive(
-      input[["cache_selection_button"]]
-    )
-    shiny::observeEvent(cache_button(), {
-      print("Pressi")
-    })
-
-    shiny::observeEvent(input$daterange, {
-      selection_server$sparam[["start"]] <- input$daterange[1]
-      selection_server$sparam[["end"]] <- input$daterange[2]
-    })
-
-    shiny::observeEvent(cache_button(), {
-      if (length(selection_server$sparam)>0) {
-        write.dbtable(r$db, "selection_table", data.frame(sparam = toString(jsonlite::toJSON(selection_server$sparam))))
-      }
-      write.dbtable(r$db, "selected_timeseries", nafree())
-    })
 
     ####
 
@@ -266,33 +288,3 @@ mod_selection_server <- function(id, r){
 
 ## To be copied in the server
 # mod_selection_server("selection_1")
-
-### Playground
-# tables = reactive({
-#   if (length(selected_groups())>0) {
-#     l = lapply(groups()$key, function(k){
-#       primary_table()[primary_table()$dgroup == k,"name"]
-#     })
-#     return(setNames(l, selected_groups()$name))
-#   }
-# })
-#
-# # List of groups and related tables
-# data_matrix = reactive({
-#   if (length(tables()) > 0) {
-#     # Iterate over table names
-#     l = lapply(tables(), function(tns) {
-#       # For every tablename in table names fetch table from database
-#       dfs = lapply(tns, function(n) {
-#         setNames(get.table(r$db, paste0(n, "_clean")), c("timestamp", n))
-#       })
-#       # Remove empty groups
-#       # dfs = dfs[length(dfs)>=1]
-#       # Merge dataframes groupwise
-#       df = purrr::reduce(.x = dfs, .f = dplyr::full_join, by = "timestamp")
-#       df$timestamp = as.Date(df$timestamp)
-#       return(df)
-#     })
-#     return(setNames(l, selected_groups()$name))
-#   }
-# })

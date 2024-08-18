@@ -30,9 +30,6 @@ setClass("Timeseries",
            cc = list(
              timestamp = "col_select",
              value = "col_select",
-             # valid_column = "col_select",
-             # valid_status = "checkbox_input",
-             # colnames = NA_character_,
              missing_val = "text_input",
              dateformat = "text_input"
            ),
@@ -45,8 +42,7 @@ setClass("Timeseries",
              "read.csv2",
              "read.table"
            ),
-           rparam = list(),
-           id = NA_character_
+           rparam = list()
          )
 )
 
@@ -126,7 +122,7 @@ setMethod("boxServer",
                 timeseries_server$gparam
               )
 
-              data = function(d, name) {
+              fetch_data = function(d, name) {
                 if (paste0(name, "_clean") %in% user.tables(d)$tablename) {
                   t = get.table(d, paste0(name, "_clean"))
                   t$timestamp = as.Date(t$timestamp)
@@ -147,32 +143,31 @@ setMethod("boxServer",
                 }
               }
 
+              # data_colnames <- reactive(
+              #   colnames(fetch_data(r$db, obj@name))
+              # )
 
-              data_colnames <- reactive(
-                colnames(data(r$db, obj@name))
-              )
+              # timestamp_column <- reactive(
+              #   gparam()[["timestamp"]]
+              # )
 
-              timestamp_column <- reactive(
-                gparam()[["timestamp"]]
-              )
+              # value_column <- reactive(
+              #   gparam()[["value"]]
+              # )
 
-              value_column <- reactive(
-                gparam()[["value"]]
-              )
+              # missing_val <- reactive(
+              #   gparam()[["missing_val"]]
+              # )
 
-              missing_val <- reactive(
-                gparam()[["missing_val"]]
-              )
-
-              dateformat <- reactive(
-                gparam()[["dateformat"]]
-              )
+              # dateformat <- reactive(
+              #   gparam()[["dateformat"]]
+              # )
 
               plot <- reactive(
                 if (!is.null(timeseries_server$data)) {
                   d = timeseries_server$data
                   colnames(d) = c("timestamp", "value")
-                  ggplot2::ggplot(data = d, ggplot2::aes(x = timestamp, y = value)) +
+                  ggplot2::ggplot(d, ggplot2::aes(x = timestamp, y = value)) +
                     ggplot2::geom_point() +
                     ggplot2::theme_minimal()
                 }
@@ -189,92 +184,15 @@ setMethod("boxServer",
                   return(obj@name)
                 )
               })
-              #
-              # lat = reactive({
-              #   tryCatch({
-              #     as.numeric(meta_infos()[["lat"]])
-              #   }, error = function(e) {
-              #     return(NULL)
-              #   })
-              # })
-              #
-              # lon = reactive({
-              #   tryCatch({
-              #     as.numeric(meta_infos()[["lon"]])
-              #   }, error = function(e) {
-              #     return(NULL)
-              #   })
-              # })
-              #
-              # shp = reactive(
-              #   sf::st_as_sf(
-              #     data.frame(
-              #       name = meta_infos()[["clearname"]],
-              #       lat = lat(),
-              #       lon = lon()),
-              #     coords = c("lon","lat"),
-              #     crs = sf::st_crs(25832))
-              # )
-              #
-              # location_plot = reactive({
-              #   leaflet::leaflet(data = sf::st_transform(shp(), '+proj=longlat +datum=WGS84')) |>
-              #     leaflet::addTiles() |>
-              #     leaflet::addCircleMarkers()
-              # })
-              #
-              #
-              # ########################
-              # ### Server functions ###
-              # ########################
 
-              print("TS Server is on air")
+              ########################
+              ### Server functions ###
+              ########################
 
-              observeEvent(group_server$trigger, {
-                timeseries_server$data <- data(r$db, obj@name)
+              observeEvent(r$import_trigger, {
+                timeseries_server$data <- fetch_data(r$db, obj@name)
                 timeseries_server$headdata <- head_data(r$db, obj@name)
               })
-
-              #
-              # observeEvent(file_path(), {
-              #   if (!is.null(file_path())){
-              #     shiny::showNotification(paste("Upload", timeseries_server$dparam$filename), type = "message")
-              #     write.dbtable(r$db, timeseries_server$obj@name, data.frame(data = stringi::stri_trans_general(readLines(file_path()), "Latin-ASCII")))
-              #     timeseries_server$dparam["filepath"] <- NULL
-              #   }
-              # })
-              #
-              # observeEvent(head_string(), {
-              #   st = stringr::str_trunc(head_string(), 9999)
-              #   change.tablevalue(r$db, "primary_table", timeseries_server$obj@key, "head", st)
-              # })
-              #
-              #
-              # ## _. Observe changes in group parameters
-              # observeEvent(timeseries_server$dparam, {
-              #   # Convert gparam list into json
-              #   st = toString(jsonlite::toJSON(timeseries_server$dparam))
-              #   # Encoding stuff
-              #   st = gsub("'", "", st)
-              #   # Write to database
-              #   change.tablevalue(r$db, "primary_table", timeseries_server$obj@key, "dparam", st)
-              # })
-              #
-              # # Communication
-              # observeEvent(clean_data(), {
-              #   print("TS Merge")
-              #   insert_timeseries(r$db, timeseries_server$obj@name, clean_data())
-              # })
-              #
-              # observeEvent(c(group_server$read_options, group_server$group_options), {
-              #   print("TS observed gparam")
-              #   timeseries_server$gparam <- get_gparam()
-              # })
-              #
-              # observeEvent(c(group_server$read_options, group_server$group_options), {
-              #   print("TS columns")
-              #   group_server$columnnames <- unique(c(group_server$columnnames, data_colnames()))
-              # })
-              #
 
               ## Observe delete button
               shiny::observeEvent(input[[paste0(RANDOMADDRESS, "_delete_button")]], {
@@ -298,10 +216,6 @@ setMethod("boxServer",
 
               output$ui_timeseries_plot <- shiny::renderPlot(
                 plot()
-              )
-
-              output$ui_location_plot <- leaflet::renderLeaflet(
-                location_plot()
               )
 
               output$ui_mapbox <- shiny::renderUI(
@@ -339,4 +253,49 @@ setMethod("boxServer",
 
             })
             return(server)
+          })
+
+setMethod("clean_data",
+          methods::signature(dataobject = "Timeseries"),
+          function (dataobject, db, options) {
+
+            data = get.table(db, paste0(dataobject@name, "_readin"))
+
+            # Central column names
+            central_cnms = unlist(options)[unname(unlist(options)) %in% colnames(data)]
+
+            df = data[,central_cnms]
+
+            df = stats::setNames(df, names(central_cnms))
+
+
+            if ("missing_val" %in% names(options)) {
+              df = df[as.character(df$value) != options[["missing_val"]],]
+            }
+
+            if ("dateformat" %in% names(options)) {
+              tryCatch(expr = {
+                dates = format(df$timestamp, scientific = FALSE)
+                df$timestamp <- as.Date(dates, format = options[["dateformat"]])
+                df = df[sapply(df$timestamp, lubridate::is.Date),]
+              }, error = function(e) {}
+              )
+            }
+
+            colnames(df) <- c("timestamp", dataobject@name)
+
+            return(df)
+
+          }
+)
+
+setMethod("data_wrangling",
+          methods::signature(dataobject = "Timeseries"),
+          function(dataobject, db, options) {
+            indata = mydata(db, dataobject@name, options[["readmethod"]], options)
+            write.dbtable(db, paste0(dataobject@name, "_readin"), indata)
+            hdata = head_data(db, dataobject@name, options[["readmethod"]], options)
+            write.dbtable(db, paste0(dataobject@name, "_head"), hdata)
+
+            return(colnames(indata))
           })

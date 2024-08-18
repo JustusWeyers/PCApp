@@ -438,7 +438,8 @@ mod_database_server <- function(id, r) {
     output$ui_cleardb_button <- shiny::renderUI({
       shiny::actionButton(
         inputId = ns("clear_button"),
-        label = r$txt[[62]]
+        label = r$txt[[62]],
+        style="color: #fff; background-color: #db3a2e; border-color: #c23329"  #db291d"
       )
     })
 

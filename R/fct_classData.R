@@ -1,8 +1,10 @@
 #' classData
 #'
+#' Parent class for data classes like TableData and Geospatial.
+#'
 #' @description Parent class for all data related classes.
 #'
-#' @return class 'Data' with specific slots as well as some generic functions
+#' @return An S4 class Data
 #'
 #' @noRd
 
@@ -41,3 +43,8 @@ setGeneric("boxUI", function(obj) standardGeneric("boxUI"))
 
 # Every type of data has a server for the box UI
 setGeneric("boxServer", function(obj, r, group_server) standardGeneric("boxServer"))
+
+setGeneric("data_wrangling", function(dataobject, db, options) standardGeneric("data_wrangling"))
+
+setGeneric("clean_data", function(dataobject, db, options) standardGeneric("clean_data"))
+

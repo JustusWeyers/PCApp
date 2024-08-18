@@ -52,14 +52,15 @@ mod_PCA_server <- function(id, r){
 
     # Functions
 
-    pcsplot = function(df) {
-      df <- reshape2::melt(df, id.vars="timestamp")
-      plot <- ggplot2::ggplot(data=df, ggplot2::aes(x=timestamp, y=value, colour = variable)) +
+    pcsplot = reactive({
+      # df <- reshape2::melt(df, id.vars="timestamp")
+      df = tidyr::pivot_longer(data = pcs(), cols = colnames(pca()))
+      plot <- ggplot2::ggplot(data=df, ggplot2::aes(x=ggplot2::.data$timestamp, y=ggplot2::.data$value, colour = ggplot2::.data$name)) +
         ggplot2::geom_line() +
         ggplot2::theme_minimal()
 
       return(plot)
-    }
+    })
 
     kommunalitaeten = function(eigenvalues){
       # Calculate percent of total variance
@@ -73,7 +74,7 @@ mod_PCA_server <- function(id, r){
       # Crop
       # df = df[1:(length(which(eigenvalues>=1))+1),]
 
-      p = ggplot2::ggplot(df, ggplot2::aes(x = PC, y = csum)) +
+      p = ggplot2::ggplot(df, ggplot2::aes(x = ggplot2::.data$PC, y = ggplot2::.data$csum)) +
         ggplot2::geom_bar(stat="identity", col = "black", fill = "white") +
         ggplot2::theme_minimal()
 
@@ -93,15 +94,15 @@ mod_PCA_server <- function(id, r){
     )
 
     eigenvalues = reactive({
-      eigen(cov(z()))$values
+      eigen(stats::cov(z()))$values
     })
 
     pca = reactive(
-      prcomp(z(), center=TRUE, scale.=TRUE, retx=TRUE)
+      stats::prcomp(z(), center=TRUE, scale.=TRUE, retx=TRUE)$x
     )
 
     pcs = reactive({
-      pcs_ = data.frame(pca()$x)
+      pcs_ = data.frame(pca())
       pcs_$timestamp = prep_table()$timestamp
       return(pcs_)
     })
@@ -119,7 +120,7 @@ mod_PCA_server <- function(id, r){
     })
 
     output$pcs = renderPlot({
-      pcsplot(pcs())
+      pcsplot()
     })
 
     output$ui_header1 <- shiny::renderUI({

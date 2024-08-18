@@ -29,11 +29,3 @@ setClass("TableData",
            )
          )
 )
-
-
-
-setGeneric("get_data", function(d, obj) standardGeneric("get_data"))
-
-setGeneric("get_cols", function(d, obj) standardGeneric("get_cols"))
-
-setGeneric("get_head_data", function(d, obj) standardGeneric("get_head_data"))

@@ -146,8 +146,6 @@ setMethod("groupServer",
                 return(do)
               }
 
-
-
               ##########################
               ### REACTIVE FUNCTIONS ###
               ##########################
@@ -175,15 +173,19 @@ setMethod("groupServer",
 
               read_parameter_inputs = reactive({
                 input_elements = read_parameter()
-                l = lapply(names(input_elements), function(n) input[[paste(RANDOMADDRESS, n, sep = "-")]])
-                l = setNames(l, names(input_elements))
+                l = lapply(names(input_elements), function(n) {
+                  input[[paste(RANDOMADDRESS, n, sep = "-")]]
+                })
+                l = stats::setNames(l, names(input_elements))
                 return(l)
               })
 
               group_option_inputs = reactive({
                 input_elements = group_options()
-                l = lapply(names(input_elements), function(n) input[[paste(RANDOMADDRESS, n, sep = "-")]])
-                l = setNames(l, names(input_elements))
+                l = lapply(names(input_elements), function(n) {
+                  input[[paste(RANDOMADDRESS, n, sep = "-")]]
+                })
+                l = stats::setNames(l, names(input_elements))
                 return(l)
               })
 
@@ -195,11 +197,17 @@ setMethod("groupServer",
                 input[[paste0(RANDOMADDRESS, "_applybutton_read")]]
               })
 
+              detail_buttons = reactive(
+                lapply(group_server$data_objects, function(o) {
+                  input[[paste0(RANDOMADDRESS, o@name, "_details")]]
+                })
+              )
+
               ########################
               ### Server Functions ###
               ########################
 
-              # 1. Set up reactive values
+              # 01. Set up reactive values
               group_server = reactiveValues(
                 obj = obj,
                 new_data_objects = get_data_objects(),
@@ -207,14 +215,13 @@ setMethod("groupServer",
                 color = get_gparam()[["color"]],
                 group_options = NULL,
                 read_options = NULL,
-                columnnames = c(),
+                fields = c(),
                 detail_buttons = NULL,
                 delete_buttons = NULL,
                 running_boxservers = c(),
-                trigger = FALSE
               )
 
-              # 2. Observe file input
+              # 02. Observe file input
               shiny::observeEvent(
                 eventExpr = fileinput(),
                 handlerExpr = {
@@ -229,13 +236,15 @@ setMethod("groupServer",
                       dgroup = group_server$obj@key
                     )
                     # Get the names of the newly created data objects
-                    nms = purrr::map_vec(new_data_objects, function(do) do@name)
+                    nms = purrr::map_vec(new_data_objects, function(do) {
+                      do@name
+                    })
                     # Add data objects to group data
                     group_server$new_data_objects[nms] <- new_data_objects
                   }
               })
 
-              # 3. Observe/handle new data objects
+              # 03. Observe/handle new data objects
               shiny::observeEvent(
                 eventExpr = group_server$new_data_objects,
                 handlerExpr = {
@@ -271,10 +280,25 @@ setMethod("groupServer",
                     lapply(group_server$new_data_objects, function(o) {
                       # 1. Eventually upload data
                       if ("filepath" %in% names(o@dparam)){
-                        shiny::showNotification(paste("Insert", o@dparam$filename, "into DB"), type = "message")
-                        write.dbtable(r$db, o@name, data.frame(data = stringi::stri_trans_general(readLines(o@dparam[["filepath"]]), "Latin-ASCII")))
+                        shiny::showNotification(
+                          paste("Insert", o@dparam$filename, "into DB"),
+                          type = "message"
+                        )
+                        write.dbtable(
+                          r$db,
+                          o@name,
+                          data.frame(
+                            data = stringi::stri_trans_general(
+                              readLines(o@dparam[["filepath"]]), "Latin-ASCII")
+                          )
+                        )
                         o@dparam["filepath"] <- NULL
-                        change.tablevalue(r$db, "primary_table", o@key, "dparam", toString(jsonlite::toJSON(o@dparam)))
+                        change.tablevalue(
+                          r$db,
+                          "primary_table",
+                          o@key, "dparam",
+                          toString(jsonlite::toJSON(o@dparam))
+                        )
                       }
                     })
 
@@ -285,7 +309,7 @@ setMethod("groupServer",
                   }
               })
 
-              ## 4. Observe colorpicker
+              # 04. Observe colorpicker
               observeEvent(color_picker(), {
                 if (!is.null(is.null(color_picker())) & color_picker() != group_server$color) {
                   gparam = get_gparam()
@@ -295,7 +319,7 @@ setMethod("groupServer",
                 }
               })
 
-              ## 5. Observe read method input
+              # 05. Observe read method input
               observeEvent(readmethod(), {
                 gparam = get_gparam()
                 gparam[["readmethod"]] = readmethod()
@@ -304,11 +328,11 @@ setMethod("groupServer",
                 set_gparam(gparam)
               })
 
-              ## 6. Observe read parameter inputs
+              # 06. Observe read parameter inputs
               observeEvent(read_parameter_inputs(), {
                 if (!is.null(read_parameter_inputs())) {
                   group_server$read_options <- read_parameter_inputs()
-                  group_server$columnnames <- NULL
+                  group_server$fields <- NULL
                   rp = group_server$read_options
                   rp = rp[!sapply(rp,is.null)]
                   gparam = get_gparam()
@@ -317,7 +341,7 @@ setMethod("groupServer",
                 }
               })
 
-              ## 5. Observe group parameter inputs
+              # 07. Observe group parameter inputs
               observeEvent(group_option_inputs(), {
                 if (!is.null(group_option_inputs())) {
                   group_server$group_options <- group_option_inputs()
@@ -327,39 +351,46 @@ setMethod("groupServer",
                 }
               })
 
-              ## 6. Observe read options
+              # 08. Observe read options
               observeEvent(apply_button_readoptions(), {
                 lapply(group_server$data_objects, function(o) {
+
                   print("Data wrangling")
-                  indata = mydata(r$db, o@name, get_gparam()[["readmethod"]], get_gparam())
-                  hdata = head_data(r$db, o@name, get_gparam()[["readmethod"]], get_gparam())
 
-                  group_server$columnnames <- unique(c(group_server$columnnames, colnames(indata)))
-                  write.dbtable(r$db, paste0(o@name, "_readin"), indata)
-                  write.dbtable(r$db, paste0(o@name, "_head"), hdata)
+                  fields = data_wrangling(dataobject = o, db = r$db, options = get_gparam())
 
-                  group_server$trigger <- !(group_server$trigger)
+                  if (!is.null(fields)) {
+                    group_server$fields <- unique(c(group_server$fields, fields))
+                  }
+
+                  r$import_trigger <- !(r$import_trigger)
 
                 })
               })
 
-              ## 7. Observe group options
+              # 09. Observe group options
               observeEvent(apply_button_groupoptions(), {
+                pt = get.table(shiny::isolate(r$db), "primary_table")
                 lapply(group_server$data_objects, function(o) {
                   print("Data cleaning")
                   indata = get.table(r$db, paste0(o@name, "_readin"))
-
-                  cldata = clean_data(indata, o@name, group_option_inputs())
-
+                  cldata = clean_data(dataobject = o, db = r$db, options = group_option_inputs())
                   write.dbtable(r$db, paste0(o@name, "_clean"), cldata)
-
-
-                  group_server$trigger <- !(group_server$trigger)
                 })
-                merge.timeseries(r$db, names(group_server$data_objects))
+                # Alternatively to many small joins one big join
+                if (identical(obj@dtype, "Timeseries")) {
+                  merge.timeseries(r$db, names(group_server$data_objects))
+                }
+
+                if (any("Metadata" %in% pt$dtype) & any("Timeseries" %in% pt$dtype)) {
+                  join_timeseries_with_metadata(r$db)
+                }
+
+                print("trigger")
+                r$import_trigger <- !(r$import_trigger)
               })
 
-              ## 8. Observe delete button
+              ## 10. Observe delete button
               shiny::observeEvent(
                 eventExpr = input[[paste0(RANDOMADDRESS, "_deletebutton")]],
                 handlerExpr = {
@@ -369,7 +400,7 @@ setMethod("groupServer",
                 }
               )
 
-              ## 9. Delete data objects
+              ## 11. Delete data objects
               shiny::observeEvent(
                 eventExpr = group_server$delete_data,
                 handlerExpr = {
@@ -386,53 +417,47 @@ setMethod("groupServer",
                 }
               )
 
+              observeEvent(detail_buttons(), {
+                diff = setdifflist(group_server$detail_buttons, detail_buttons())
+                diff = names(diff)
+                group_server$detail_buttons <- detail_buttons()
+
+                if (length(diff) == 1 & any(!(diff %in% group_server$running_boxservers)))  {
+                  print(paste("Start", diff, "server"))
+                  boxServer(group_server$data_objects[[diff]], r = r, group_server = group_server)
+                  group_server$running_boxservers <- c(group_server$running_boxservers, diff)
+                  shiny::removeUI(selector = paste0("#", ns(paste0(RANDOMADDRESS, diff, "_details"))), session = session)
+                }
+
+              })
+
               ##########
               ### UI ###
               ##########
 
               # Array for data boxes
               output$ui_boxArray = shiny::renderUI(
-
                 lapply(group_server$data_objects, function(o) {
-
                   # Important namespace juggle
                   oname = o@name
                   o@name <- ns(o@name)
-
                   # Render empty box
                   shinydashboard::box(
                     title = oname,
                     width = 12, collapsible = TRUE, collapsed = TRUE,
-
                     # Box content
                     boxUI(o)(),
                     fluidRow(
                       col_2(
-                        shiny::actionButton(inputId = ns(paste0(RANDOMADDRESS, oname, "_details")), "Show Details", class = "btn-xs")
+                        shiny::actionButton(
+                          inputId = ns(paste0(RANDOMADDRESS, oname, "_details")),
+                          label = "Show Details", class = "btn-xs")
                       )
                     )
                   )
                 })
               )
 
-              detail_buttons = reactive(
-                lapply(group_server$data_objects, function(o) {
-                  input[[paste0(RANDOMADDRESS, o@name, "_details")]]
-                })
-              )
-
-              observeEvent(detail_buttons(), {
-                diffi = names(setdifflist(group_server$detail_buttons, detail_buttons()))
-                group_server$detail_buttons <- detail_buttons()
-
-                if (length(diffi) == 1 & any(!(diffi %in% group_server$running_boxservers)))  {
-                  print(paste("Start", diffi, "server"))
-                  boxServer(group_server$data_objects[[diffi]], r = r, group_server = group_server)
-                  group_server$running_boxservers <- c(group_server$running_boxservers, diffi)
-                  shiny::removeUI(selector = paste0("#", ns(paste0(RANDOMADDRESS, diffi, "_details"))), session = session)
-                }
-
-              })
 
               ## File Input
               output$ui_fileinput <- shiny::renderUI(
@@ -511,7 +536,7 @@ setMethod("groupServer",
                     ui = shiny::selectInput(
                       inputId = ns(paste0(RANDOMADDRESS, "-", le_name)),
                       label = le_name,
-                      choices = group_server$columnnames,
+                      choices = group_server$fields,
                       selected = sel
                     )
                   } else if (le == "text_input") {

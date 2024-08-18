@@ -148,6 +148,8 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
           import_server$group_objects[n] <- NULL
         })
 
+        r$import_trigger = !(r$import_trigger)
+
         # Clear delete queue
         import_server$delete_groups <- c()
     })

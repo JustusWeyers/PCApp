@@ -15,13 +15,19 @@ app_server <- function(input, output, session) {
   ### Global reactive values ###
   ##############################
 
-  r <- shiny::reactiveValues()
+  r <- shiny::reactiveValues(
+    import_trigger = FALSE
+  )
 
   # Environment
   r$ENV = Sys.getenv()
 
   # Language
-  lang <- golem::get_golem_options("lang")
+  if (length(golem::get_golem_options("lang")) > 0) {
+    lang <- golem::get_golem_options("lang")
+  } else {
+    lang = "en"
+  }
   r$txt <- internal$apptext[[lang]]
 
   # tmap settings

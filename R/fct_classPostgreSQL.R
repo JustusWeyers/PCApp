@@ -216,13 +216,15 @@ setMethod("create.primarytable",
                   dgroup         NUMERIC not null,
                   rparam         VARCHAR(9999),
                   dparam         VARCHAR(9999),
-                  head           VARCHAR(9999),
-                  id             VARCHAR(100),
-                  clearname      VARCHAR(100),
-                  lat            VARCHAR(100),
-                  lon            VARCHAR(100)
+                  id             VARCHAR(100)
               );
             )"
+
+            # head           VARCHAR(9999),
+            # clearname      VARCHAR(100),
+            # lat            VARCHAR(100),
+            # lon            VARCHAR(100)
+
             # Run command on database
             DBI::dbExecute(d@con, sql)
           })
@@ -367,13 +369,23 @@ setMethod("merge.timeseries",
           methods::signature(d = "PostgreSQL"),
           function (d, names) {
 
-            # Clean table from old columns
-            sql = paste0("ALTER TABLE timeseries_table ", toString(paste("DROP COLUMN IF EXISTS", names)), ";")
-            suppressWarnings(DBI::dbExecute(d@con, sql))
+            print("Meeeeeeeergiiii")
 
-            # Join new columns together
+            # Remove existing columns
+            delete_columns = names[names %in% DBI::dbListFields(d@con, "timeseries_table")]
+            if (length(delete_columns) > 0) {
+              sql = paste0("ALTER TABLE timeseries_table ", toString(paste("DROP COLUMN IF EXISTS", delete_columns)), ";")
+              suppressWarnings(DBI::dbExecute(d@con, sql))
+            }
+
+            # Natural join timeseries into timeseriestable by timestamp
             sql = paste("SELECT * FROM timeseries_table", paste(paste("NATURAL FULL OUTER JOIN", paste0(names, "_clean")), collapse = " "), ";")
             df = DBI::dbGetQuery(d@con, sql)
+
+            # Remove rows with only NA
+            df <- df[!apply(df, FUN = function(x) all(is.na(x[2:length(x)])), MARGIN = 1),]
+
+            # Write to database
             write.dbtable(d, "timeseries_table", df)
             print("done")
           })

@@ -44,27 +44,3 @@ head_data <- function(d, name, readm, g) {
   # Clean up messy characters
   return(data.frame(data = hlines))
 }
-
-clean_data <- function(data, name, goptions) {
-  cnms <- unlist(goptions)
-  cnms = cnms[unname(cnms) %in% colnames(data)]
-
-  df = setNames(data[,unname(cnms)], names(cnms))
-
-  if ("missing_val" %in% names(goptions)) {
-    df = df[as.character(df$value) != goptions[["missing_val"]],]
-  }
-  if ("dateformat" %in% names(goptions)) {
-    tryCatch(expr = {
-      dates = format(df$timestamp, scientific = FALSE)
-      df$timestamp <- as.Date(dates, format = goptions[["dateformat"]])
-      df = df[sapply(df$timestamp, is.date),]
-      df$timestamp = as.character(df$timestamp)
-    }, error = function(e) {}
-    )
-  }
-
-  colnames(df) <- c("timestamp", name)
-
-  return(df)
-}
