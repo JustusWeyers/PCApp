@@ -15,8 +15,12 @@ app_server <- function(input, output, session) {
   ### Global reactive values ###
   ##############################
 
+  # waiter::autoWaiter(id = NULL, html = NULL, color = NULL, image = "", fadeout = FALSE)
+
   r <- shiny::reactiveValues(
-    import_trigger = FALSE
+    import_trigger = FALSE,
+    cache_selection_trigger = FALSE,
+    metadata = NULL
   )
 
   # Environment
@@ -24,11 +28,14 @@ app_server <- function(input, output, session) {
 
   # Language
   if (length(golem::get_golem_options("lang")) > 0) {
-    lang <- golem::get_golem_options("lang")
+    r$lang <- golem::get_golem_options("lang")
   } else {
-    lang = "en"
+    r$lang = "en"
   }
-  r$txt <- internal$apptext[[lang]]
+
+  observeEvent(r$lang, {
+    r$txt <- internal$apptext[[r$lang]]
+  })
 
   # tmap settings
   # tmap::tmap_mode("plot")
@@ -53,9 +60,14 @@ app_server <- function(input, output, session) {
   mod_database_server("database_tab", r)
 
   # Import timeseries server
-  mod_import_server("import_timeseries", r, dtype = r$txt[25])
+  mod_import_server("import_timeseries", r, dtype = "Timeseries")
   # Import metadata server
-  mod_import_server("import_metadata", r, dtype = r$txt[26], predefined_groups = c("Metadata"))
+  mod_import_server("import_metadata", r, dtype = "Metadata", predefined_groups = c("Metadata"))
+
+  mod_import_server("import_vectordata", r, dtype = "VectorData", predefined_groups = c("Untersuchungsgebiet", "Einzugsgebiete"))
+  mod_import_server("import_rasterdata", r, dtype = "RasterData")
+
+
 
   # Selection server
   mod_selection_server("select", r)
@@ -66,6 +78,7 @@ app_server <- function(input, output, session) {
   # Export server
   mod_export_server("export", r)
 
+  mod_general_server("general_settings", r)
   # ENV server
   mod_ENV_server("ENV_1")
 

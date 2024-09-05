@@ -3,6 +3,8 @@
 #' @description Database class.
 #'
 #' @noRd
+#'
+#' @export
 
 setClass("Database",
          slots = c(

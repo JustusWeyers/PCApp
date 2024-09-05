@@ -266,3 +266,18 @@ setMethod("clean_data",
               return(data.frame())
             })
           })
+
+setMethod("initial_read_write",
+          methods::signature(dataobject = "Metadata"),
+          function(dataobject, db) {
+
+            write.dbtable(
+              db,
+              dataobject@name,
+              data.frame(
+                data = stringi::stri_trans_general(
+                  readLines(dataobject@dparam[["filepath"]]), "Latin-ASCII")
+              )
+            )
+
+          })

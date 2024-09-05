@@ -16,8 +16,11 @@ mydata = function(d, name, readm, g) {
   # Request text from database
   g[["text"]] <- get.table(d, name)$data
 
+  print("# mydata")
   tryCatch(expr = {
-    return(do.call(readm, g))
+    d = do.call(readm, g)
+    str(d)
+    return(d)
   }, error = function(e) {
     return(data.frame())
   })

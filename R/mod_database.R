@@ -12,7 +12,7 @@
 mod_database_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tabPanel(
-    shiny::uiOutput(ns("ui_tab_title")),
+    shiny::textOutput(ns("ui_tab_title")),
     shiny::tagList(
       shiny::fluidPage(
         # Header 1
@@ -227,9 +227,7 @@ mod_database_server <- function(id, r) {
     # UI Elements
 
     ## Tab title
-    output$ui_tab_title <- shiny::renderUI(
-      expr = shiny::renderText(r$txt[2])
-    )
+    output$ui_tab_title <- shiny::renderText(r$txt[2])
 
     ## Header 1
     output$ui_header1 <- shiny::renderUI(

@@ -48,3 +48,5 @@ setGeneric("data_wrangling", function(dataobject, db, options) standardGeneric("
 
 setGeneric("clean_data", function(dataobject, db, options) standardGeneric("clean_data"))
 
+setGeneric("initial_read_write", function(dataobject, db) standardGeneric("initial_read_write"))
+

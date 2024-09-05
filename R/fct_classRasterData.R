@@ -9,7 +9,8 @@
 setClass("RasterData",
          contains = "GeoSpatialData",
          slot = c(
-           extent = "character"
+           extent = "character",
+           cc = "list"
          ),
          prototype = list(
            extent = NA_character_

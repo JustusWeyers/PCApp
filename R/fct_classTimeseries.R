@@ -282,6 +282,8 @@ setMethod("clean_data",
               )
             }
 
+            # df$value = as.numeric(df$value)
+
             colnames(df) <- c("timestamp", dataobject@name)
 
             return(df)
@@ -298,4 +300,19 @@ setMethod("data_wrangling",
             write.dbtable(db, paste0(dataobject@name, "_head"), hdata)
 
             return(colnames(indata))
+          })
+
+setMethod("initial_read_write",
+          methods::signature(dataobject = "Timeseries"),
+          function(dataobject, db) {
+
+            write.dbtable(
+              db,
+              dataobject@name,
+              data.frame(
+                data = stringi::stri_trans_general(
+                  readLines(dataobject@dparam[["filepath"]]), "Latin-ASCII")
+              )
+            )
+
           })

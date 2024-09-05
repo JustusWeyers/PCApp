@@ -29,6 +29,8 @@ golem::add_module(name = "import") # Name of the module
 golem::add_module(name = "selection") # Name of the module
 golem::add_module(name = "PCA") # Name of the module
 golem::add_module(name = "export") # Name of the module
+golem::add_module(name = "general") # Name of the module
+
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
@@ -64,6 +66,10 @@ golem::add_utils("setdifflist")
 golem::add_utils("insert_timeseries")
 golem::add_utils("datareading")
 golem::add_utils("join_timeseries_with_metadata")
+golem::add_utils("fetch_metadata")
+golem::add_utils("read_shapefile")
+golem::add_utils("autocorrelation")
+
 
 
 ## External resources

@@ -44,7 +44,9 @@ app_ui <- function(request) {
             tabName = "import", shiny::tabsetPanel(
               type = "tabs",
               mod_import_ui("import_timeseries"),
-              mod_import_ui("import_metadata")
+              mod_import_ui("import_metadata"),
+              mod_import_ui("import_vectordata"),
+              mod_import_ui("import_rasterdata")
             )
           ),
 
@@ -56,10 +58,8 @@ app_ui <- function(request) {
 
           # Analysis
           shinydashboard::tabItem(
-            tabName = "pca", shiny::tabsetPanel(
-              type = "tabs",
-              mod_PCA_ui("PCA")
-            )
+            tabName = "pca",
+            mod_PCA_ui("PCA")
           ),
 
           # Export
@@ -72,6 +72,7 @@ app_ui <- function(request) {
           shinydashboard::tabItem(
             tabName = "settings", shiny::tabsetPanel(
               type = "tabs",
+              mod_general_ui("general_settings"),
               mod_database_ui("database_tab"),
               mod_ENV_ui("ENV_1")
             )

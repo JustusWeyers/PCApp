@@ -379,7 +379,7 @@ setMethod("merge.timeseries",
             }
 
             # Natural join timeseries into timeseriestable by timestamp
-            sql = paste("SELECT * FROM timeseries_table", paste(paste("NATURAL FULL OUTER JOIN", paste0(names, "_clean")), collapse = " "), ";")
+            sql = paste("SELECT * FROM timeseries_table", paste(paste("NATURAL FULL OUTER JOIN", paste0(names, "_clean")), collapse = " "), " ORDER BY timestamp;")
             df = DBI::dbGetQuery(d@con, sql)
 
             # Remove rows with only NA

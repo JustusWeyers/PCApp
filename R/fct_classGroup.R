@@ -230,6 +230,8 @@ setMethod("groupServer",
                   upload$datapath <- gsub("\\\\", "/", upload$datapath)
                   # Check if upload is not null
                   if (any(!is.null(upload))) {
+                    drop = c(".cpg", ".dbf", ".geojson", ".prj", ".qmd", ".shx" )
+                    upload = upload[sapply(upload$datapath, function(dp) !any(endsWith(dp, drop))),]
                     # Create new data objects via import function
                     new_data_objects = purrr::pmap(
                       upload, new_do, dtype = group_server$obj@dtype,
@@ -263,8 +265,9 @@ setMethod("groupServer",
                         dparam = toString(jsonlite::toJSON(do@dparam))
                       )
                       # Append or replace
-                      if (do@name %in% group_server$pt$name) {
-                        key = group_server$pt[group_server$pt$name == do@name, "key"]
+                      pt = get.table(r$db, "primary_table")
+                      if (do@name %in% pt$name) {
+                        key = pt[pt$name == do@name, "key"]
                         replace.by.primary_key(r$db, "primary_table", key, pt_entry)
                       } else if (is.na(do@key)) {
                         DBI::dbAppendTable(r$db@con, "primary_table", pt_entry)
@@ -284,15 +287,11 @@ setMethod("groupServer",
                           paste("Insert", o@dparam$filename, "into DB"),
                           type = "message"
                         )
-                        write.dbtable(
-                          r$db,
-                          o@name,
-                          data.frame(
-                            data = stringi::stri_trans_general(
-                              readLines(o@dparam[["filepath"]]), "Latin-ASCII")
-                          )
-                        )
+
+                        initial_read_write(o, r$db)
+
                         o@dparam["filepath"] <- NULL
+
                         change.tablevalue(
                           r$db,
                           "primary_table",
@@ -316,6 +315,7 @@ setMethod("groupServer",
                   gparam[["color"]] <- color_picker()
                   set_gparam(gparam)
                   group_server$color <- get_gparam()[["color"]]
+                  r$import_trigger <- !(r$import_trigger)
                 }
               })
 
@@ -383,10 +383,9 @@ setMethod("groupServer",
                 }
 
                 if (any("Metadata" %in% pt$dtype) & any("Timeseries" %in% pt$dtype)) {
-                  join_timeseries_with_metadata(r$db)
+                  r$metadata = join_timeseries_with_metadata(r$db)
                 }
 
-                print("trigger")
                 r$import_trigger <- !(r$import_trigger)
               })
 

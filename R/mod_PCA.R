@@ -9,33 +9,55 @@
 #' @importFrom shiny NS tagList
 mod_PCA_ui <- function(id){
   ns <- NS(id)
-  shiny::tabPanel(
-    "PCA",
-    shiny::tagList(
-      shiny::fluidPage(
-        # Header 1
-        shiny::uiOutput(ns("ui_header1")),
-        shinydashboard::box(
-          width = "100%", solidHeader = TRUE,
-          shiny::fluidRow(
-            col_12(
-              plotOutput(ns("pcs"))
+
+  shiny::tabsetPanel(
+    type = "tabs",
+
+    shiny::tabPanel(
+      shiny::textOutput(ns("ui_tab_title_pca")),
+      shiny::tagList(
+        shiny::fluidPage(
+          # Header 1
+          shiny::uiOutput(ns("ui_header1")),
+          shinydashboard::box(
+            width = "100%", solidHeader = TRUE,
+            shiny::fluidRow(
+              col_12(
+                plotOutput(ns("pcs"))
+              )
             )
-          )
-        ),
-        # Header 2
-        shiny::uiOutput(ns("ui_header2")),
-        shinydashboard::box(
-          width = "100%", solidHeader = TRUE,
-          shiny::fluidRow(
-            col_12(
-              plotOutput(ns("plotPercentofVariance"))
+          ),
+          # Header 2
+          shiny::uiOutput(ns("ui_header2")),
+          shinydashboard::box(
+            width = "100%", solidHeader = TRUE,
+            shiny::fluidRow(
+              col_12(
+                plotOutput(ns("plotPercentofVariance"))
+              )
+            )
+          ),
+          # Header 3
+          shiny::uiOutput(ns("ui_header3")),
+          shinydashboard::box(
+            width = "100%", solidHeader = TRUE,
+            shiny::fluidRow(
+              col_12(
+                tableOutput(ns("loadings"))
+              )
             )
           )
         )
       )
+    ),
+
+    shiny::tabPanel(
+      shiny::textOutput(ns("ui_tab_title_loadings")),
     )
+
   )
+
+
 }
 
 #' PCA Server Functions
@@ -47,15 +69,27 @@ mod_PCA_server <- function(id, r){
 
     ####
 
+    get_timeseries = function(db) {
+      if ("selected_timeseries" %in% user.tables(db)$tablename) {
+        t = get.table(db, "selected_timeseries")
+        t$timestamp = as.Date(t$timestamp)
+        return(t)
+      } else {
+        return(data.frame())
+      }
+    }
+
     # PCA server's reactive values
-    pcaserver = reactiveValues()
+    pcaserver = reactiveValues(
+      ts = get_timeseries(shiny::isolate(r$db))
+    )
 
     # Functions
 
     pcsplot = reactive({
       # df <- reshape2::melt(df, id.vars="timestamp")
-      df = tidyr::pivot_longer(data = pcs(), cols = colnames(pca()))
-      plot <- ggplot2::ggplot(data=df, ggplot2::aes(x=ggplot2::.data$timestamp, y=ggplot2::.data$value, colour = ggplot2::.data$name)) +
+      df = tidyr::pivot_longer(data = pcs(), cols = colnames(pca()$x))
+      plot <- ggplot2::ggplot(data=df, ggplot2::aes(x = timestamp, y = value, colour = name)) +
         ggplot2::geom_line() +
         ggplot2::theme_minimal()
 
@@ -74,7 +108,7 @@ mod_PCA_server <- function(id, r){
       # Crop
       # df = df[1:(length(which(eigenvalues>=1))+1),]
 
-      p = ggplot2::ggplot(df, ggplot2::aes(x = ggplot2::.data$PC, y = ggplot2::.data$csum)) +
+      p = ggplot2::ggplot(df, ggplot2::aes(x = PC, y = csum)) +
         ggplot2::geom_bar(stat="identity", col = "black", fill = "white") +
         ggplot2::theme_minimal()
 
@@ -83,14 +117,8 @@ mod_PCA_server <- function(id, r){
 
     # Reactive functions
 
-    prep_table = reactive({
-      t = get.table(r$db, "selected_timeseries")
-      t$timestamp = as.Date(t$timestamp)
-      return(t)
-    })
-
     z = reactive(
-      apply(X = prep_table()[,2:ncol(prep_table())], FUN=scale, MARGIN = 2)
+      apply(X = pcaserver$ts[,2:ncol(pcaserver$ts)], FUN=scale, MARGIN = 2)
     )
 
     eigenvalues = reactive({
@@ -98,20 +126,45 @@ mod_PCA_server <- function(id, r){
     })
 
     pca = reactive(
-      stats::prcomp(z(), center=TRUE, scale.=TRUE, retx=TRUE)$x
+      stats::prcomp(z(), center=TRUE, scale.=TRUE, retx=TRUE)
     )
 
     pcs = reactive({
-      pcs_ = data.frame(pca())
-      pcs_$timestamp = prep_table()$timestamp
+      pcs_ = data.frame(pca()$x)
+      pcs_$timestamp = pcaserver$ts$timestamp
       return(pcs_)
     })
+
+    loadings = reactive({
+      CL = data.frame(pca()$rotation %*% diag(sqrt(eigenvalues())))
+      colnames(CL) = paste0("PC", seq(1, length(eigenvalues())))
+      rownames(CL) = rownames(pca()$rotation)
+      return(CL)
+    })
+
+    geo_loadings = reactive({
+      print("### r #########")
+
+      loc = fetch_metadata(r$metadata, rownames(loadings()), c("name", "latitude", "longitude"))
+      data = merge(loc, loadings(), by.x= "hash", by.y = "row.names")
+      # names(data)[1] <- "hash"
+      # loc = st_as_sf()
+
+      print(data)
+
+      return(data)
+    })
+
+    output$loadings = renderTable(geo_loadings()) # loadings(), rownames = TRUE)
 
 
 
     # Server
 
-
+    observeEvent(r$cache_selection_trigger, {
+      print("pca server observed cache")
+      pcaserver$ts = get_timeseries(r$db)
+    })
 
     # UI
 
@@ -126,9 +179,18 @@ mod_PCA_server <- function(id, r){
     output$ui_header1 <- shiny::renderUI({
       shiny::titlePanel("Principal components")
     })
+
     output$ui_header2 <- shiny::renderUI({
       shiny::titlePanel("Communalities")
     })
+
+    output$ui_header3 <- shiny::renderUI({
+      shiny::titlePanel("Loadings")
+    })
+
+    output$ui_tab_title_pca <- shiny::renderText(r$txt[55])
+
+    output$ui_tab_title_loadings <- shiny::renderText(r$txt[63])
 
     ####
 
