@@ -83,7 +83,7 @@ golem::add_sass_file("custom")
 ## If you have data in your package
 
 # Language
-apptextfiles <- list.files(pattern = "\\.csv$", path = "inst/app/language/")
+{apptextfiles <- list.files(pattern = "\\.csv$", path = "inst/app/language/")
 apptext <- lapply(file.path("inst/app/language/", apptextfiles), \(x) read.csv(x, header = FALSE)[, 1])
 names(apptext) <- tools::file_path_sans_ext(apptextfiles)
 
@@ -99,7 +99,7 @@ acc = c(
 )
 
 internal = list("apptext" = apptext, "acc" = acc)
-usethis::use_data(internal, internal = TRUE, overwrite = TRUE)
+usethis::use_data(internal, internal = TRUE, overwrite = TRUE)}
 
 # Tests ----
 ## Add one line by test you want to create

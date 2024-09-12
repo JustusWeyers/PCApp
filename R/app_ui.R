@@ -10,27 +10,80 @@
 #' @noRd
 
 app_ui <- function(request) {
-  shiny::tagList(
+  mytheme <- fresh::create_theme(
+    fresh::adminlte_color(
+      light_blue = "#4ba046"
+    ),
+    fresh::adminlte_sidebar(
+      dark_bg = "#EDEDED",
+      dark_hover_bg = "#72a36f",
+      dark_color = "#2E3440"
+    ),
+    fresh::adminlte_global(
+      content_bg = "#FFFFFF",
+      box_bg = "#FFFFFF",
+      info_box_bg = "#EDEDED"
+    )
+  )
 
+
+  shiny::tagList(
     # Leave this function for adding external resources
     golem_add_external_resources(),
 
     # Dashboard framework
     shinydashboard::dashboardPage(
+      # theme = bslib::bs_theme(primary = "green"),
 
       # Header
-      shinydashboard::dashboardHeader(title = "PCApp"),
+      shinydashboard::dashboardHeader(
+        title = "PCApp"
+      ),
 
       # Sidebar
       shinydashboard::dashboardSidebar(
+        br(),
+        # Shiny image output
+        shiny::fluidRow(
+          col_10(
+            shiny::img(
+              src = 'www/zalfLogo2.png',
+              width = "100%",
+              style = "display: block; margin-left: 20px; margin-right: 5px;"
+            )
+          )
+        ),
+        hr(style = "border-top: 1px solid #c1c9bf;"),
         shinydashboard::sidebarMenu(
           id="mytabs",
           shinydashboard::sidebarMenuOutput("sidebarmenu")
+        ),
+        hr(style = "border-top: 1px solid #c1c9bf;"),
+        shiny::fluidRow(
+          col_2(
+            shiny::img(
+              src = 'www/github.svg',
+              width = "100%",
+              style = "display: block; margin-left: 20px; margin-right: auto;"
+            )
+          ),
+          col_10(
+            tags$a(
+              href="https://github.com/JustusWeyers/PCApp",
+              "GitHub"
+            )
+          )
         )
       ),
 
       # Body
       shinydashboard::dashboardBody(
+
+        # tags$head(
+        #   tags$link(rel = "stylesheet", type = "text/css", href = "pcapp.css")
+        # ),
+        fresh::use_theme(mytheme),
+
         shinydashboard::tabItems(
 
           # Home

@@ -6,11 +6,11 @@
 #'
 #' @noRd
 
-fetch_metadata = function(metadata, hash, field) {
+fetch_metadata = function(metadata, ids, field) {
   if (!is.null(metadata)) {
     do.call(rbind.data.frame, lapply(metadata, function(df) {
-      if (all(c("hash", field) %in% colnames(df))) {
-        return(df[df$hash %in% hash, c("hash", field)])
+      if (all(c("id", field) %in% colnames(df))) {
+        return(df[df$id %in% ids, c("id", field)])
       }
     }))
   }

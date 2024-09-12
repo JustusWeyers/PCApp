@@ -11,6 +11,31 @@ mod_home_ui <- function(id){
   ns <- NS(id)
   tagList(
 
+    shiny::fluidPage(
+      shiny::fluidRow(
+        col_6(
+          h1("PCApp"),
+          h4(em("An application for principal component analysis with time series")),
+          shinydashboard::box(
+            solidHeader = TRUE, width = "100%", height = 400
+          )
+        ),
+        col_6(
+          shinydashboard::box(
+            solidHeader = TRUE, width = "100%", height = 500
+          )
+        )
+      ),
+
+      shiny::fluidRow(
+        col_12(
+          shinydashboard::box(
+            solidHeader = TRUE, width = "100%", height = 400
+          )
+        )
+      )
+    )
+
   )
 }
 

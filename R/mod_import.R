@@ -76,9 +76,9 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
     ########################
 
     # 1. Setup reactive values
-    import_server = reactiveValues(
+    import_server = shiny::reactiveValues(
       predefined_groups = predefined_groups,
-      group_objects = shiny::isolate(get_group_objects()),
+      # group_objects = shiny::isolate(get_group_objects()),
       delete_groups = NULL
     )
 
@@ -118,8 +118,9 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
 
     # 3.2. Observe predefined groups
     observeEvent(import_server$predefined_groups, {
+      print(get.table(r$db, "datagroup_table"))
       lapply(import_server$predefined_groups, function(n) {
-        if (!(n %in% names(import_server$group_objects))) {
+        if (!(n %in% get.table(r$db, "datagroup_table")$name)) {
           # If groupname is valid add group to datagroup_table
           appendto.table(
             d = r$db,
@@ -165,7 +166,9 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
     })
 
     # Group box array
-    output$ui_group_array <- shiny::renderUI(
+    output$ui_group_array <- shiny::renderUI({
+      import_server$group_objects = get_group_objects()
+
       lapply(
         X = import_server$group_objects,
         FUN = function(g) {
@@ -174,7 +177,7 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
           return(groupUI(g)())
         }
       )
-    )
+    })
 
     ## Render section to add a group
     output$ui_addagroup <- shiny::renderUI(

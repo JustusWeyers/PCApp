@@ -107,7 +107,7 @@ setMethod("groupServer",
 
                 # Build new data objects (do) from pt
                 do = lapply(pt$key, function(key) {
-                  methods::new(
+                  return(methods::new(
                     Class = obj@dtype,
                     key = key,
                     name = pt[pt$key == key, "name"],
@@ -115,8 +115,9 @@ setMethod("groupServer",
                     dgroup = pt[pt$key == key, "dgroup"],
                     rparam = as.list(jsonlite::fromJSON(pt[pt$key == key, "rparam"])),
                     dparam = as.list(jsonlite::fromJSON(pt[pt$key == key, "dparam"]))
-                  )
+                  ))
                 })
+
                 # Set names of new do
                 do = stats::setNames(do, pt$name)
                 # Return fresh data objects
@@ -210,7 +211,7 @@ setMethod("groupServer",
               # 01. Set up reactive values
               group_server = reactiveValues(
                 obj = obj,
-                new_data_objects = get_data_objects(),
+                new_data_objects = NULL, # get_data_objects(),
                 delete_data = NULL,
                 color = get_gparam()[["color"]],
                 group_options = NULL,
@@ -252,28 +253,34 @@ setMethod("groupServer",
                 handlerExpr = {
 
                   if(length(group_server$new_data_objects) != 0) {
+                    shiny::withProgress(message = "Loading", value = 0, {
 
-                    print(paste0("Observed new_data_objects (", obj@name, ")"))
+                      lapply(group_server$new_data_objects, function(do) {
+                        # Create primary table entry
+                        pt_entry = data.frame(
+                          name = do@name,
+                          dtype = do@dtype,
+                          dgroup = do@dgroup,
+                          rparam = toString(jsonlite::toJSON(do@rparam)),
+                          dparam = toString(jsonlite::toJSON(do@dparam))
+                        )
+                        # Append or replace
+                        pt = get.table(r$db, "primary_table")
+                        if (do@name %in% pt$name) {
+                          key = pt[pt$name == do@name, "key"]
+                          replace.by.primary_key(r$db, "primary_table", key, pt_entry)
+                        } else if (is.na(do@key)) {
+                          DBI::dbAppendTable(r$db@con, "primary_table", pt_entry)
+                        } else {
+                          replace.by.primary_key(r$db, "primary_table", do@key, pt_entry)
+                        }
 
-                    lapply(group_server$new_data_objects, function(do) {
-                      # Create primary table entry
-                      pt_entry = data.frame(
-                        name = do@name,
-                        dtype = do@dtype,
-                        dgroup = do@dgroup,
-                        rparam = toString(jsonlite::toJSON(do@rparam)),
-                        dparam = toString(jsonlite::toJSON(do@dparam))
-                      )
-                      # Append or replace
-                      pt = get.table(r$db, "primary_table")
-                      if (do@name %in% pt$name) {
-                        key = pt[pt$name == do@name, "key"]
-                        replace.by.primary_key(r$db, "primary_table", key, pt_entry)
-                      } else if (is.na(do@key)) {
-                        DBI::dbAppendTable(r$db@con, "primary_table", pt_entry)
-                      } else {
-                        replace.by.primary_key(r$db, "primary_table", do@key, pt_entry)
-                      }
+                        shiny::incProgress(
+                          1/length(group_server$new_data_objects),
+                          detail = do@name)
+
+                      })
+
                     })
 
                     # Fetch dataobjects
@@ -283,10 +290,6 @@ setMethod("groupServer",
                     lapply(group_server$new_data_objects, function(o) {
                       # 1. Eventually upload data
                       if ("filepath" %in% names(o@dparam)){
-                        shiny::showNotification(
-                          paste("Insert", o@dparam$filename, "into DB"),
-                          type = "message"
-                        )
 
                         initial_read_write(o, r$db)
 
@@ -422,7 +425,6 @@ setMethod("groupServer",
                 group_server$detail_buttons <- detail_buttons()
 
                 if (length(diff) == 1 & any(!(diff %in% group_server$running_boxservers)))  {
-                  print(paste("Start", diff, "server"))
                   boxServer(group_server$data_objects[[diff]], r = r, group_server = group_server)
                   group_server$running_boxservers <- c(group_server$running_boxservers, diff)
                   shiny::removeUI(selector = paste0("#", ns(paste0(RANDOMADDRESS, diff, "_details"))), session = session)
@@ -435,7 +437,9 @@ setMethod("groupServer",
               ##########
 
               # Array for data boxes
-              output$ui_boxArray = shiny::renderUI(
+              output$ui_boxArray = shiny::renderUI({
+                group_server$new_data_objects =  get_data_objects()
+
                 lapply(group_server$data_objects, function(o) {
                   # Important namespace juggle
                   oname = o@name
@@ -455,7 +459,7 @@ setMethod("groupServer",
                     )
                   )
                 })
-              )
+              })
 
 
               ## File Input

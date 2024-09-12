@@ -224,6 +224,15 @@ mod_database_server <- function(id, r) {
       shiny::reactive(DBI::dbDisconnect(r$db@con))
     })
 
+
+    if ("settings" %in% user.tables(shiny::isolate(r$db))$tablename) {
+      r$settings = jsonlite::fromJSON(get.table(shiny::isolate(r$db), "settings")[1,"settings"])
+    }
+
+    observeEvent(r$settings, {
+      write.dbtable(r$db, "settings", data.frame(settings = toString(jsonlite::toJSON(r$settings))))
+    })
+
     # UI Elements
 
     ## Tab title

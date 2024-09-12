@@ -21,6 +21,8 @@ mod_selection_ui <- function(id){
   ## where the user can maneuver through the proces of selecting
   ## the appropriate data for principal component analysis.
 
+  ## --- Justus Weyers 05.09.2024
+
   # Fluid page
   shiny::tagList(
     shiny::fluidPage(
@@ -162,8 +164,6 @@ mod_selection_server <- function(id, r){
     # Namespace
     ns <- session$ns
 
-    ####
-
     # Server
 
     ## The module server performs necessary calculations an renders the ui
@@ -183,6 +183,8 @@ mod_selection_server <- function(id, r){
     ## are defined in the /R directory respectively in the /src directory. The
     ## server makes also use of the slots and functions of the child classes
     ## of class Database defined in /R/fct_classDatabase.R file.
+
+    ## --- Justus Weyers 05.09.2024
 
     # 1. Function definitions
 
@@ -269,8 +271,9 @@ mod_selection_server <- function(id, r){
       # Set up a result data.frame. It contains a column with names of the
       # accepted timeseries and a yet empty column of maximum gap
       dat = data.table::data.table(
-        id = unname(unlist(groups_and_names())),
-        maxgap = NA
+        id = colnames(nafree())[colnames(nafree()) != "timestamp"],
+        maxgap = NA,
+        maxcor = NA
       )
 
       # User defined level of autocorrelation
@@ -280,7 +283,7 @@ mod_selection_server <- function(id, r){
       dt = input$dtclass_input
 
       # Check if userinputs are ok
-      if (is.na(dt) | dt == 0) {
+      if (is.na(dt) | dt <= 1 | (dt %% 2) != 0) {
         # Prematurely return result data.table
         return(dat)
       }
@@ -311,8 +314,8 @@ mod_selection_server <- function(id, r){
           acordf = acor(data = data, classes = classes, alpha = alpha)
           # Fill correlation data into corr data.table
           corr[i,1:nrow(acordf)] = acordf$Autocorrelation
-          # Increase loading bar
-          shiny::incProgress(1/nrow(dat), detail = paste("Station", dat$id[i]))
+
+          dat$maxcor[i] = classes[nrow(acordf)]-1
 
           # Data.frame containing date and difference to next date columns
           gapdf = data.frame(
@@ -330,6 +333,8 @@ mod_selection_server <- function(id, r){
           } else {
             dat$maxgap[i] = 0
           }
+          # Increase loading bar
+          shiny::incProgress(1/nrow(dat), detail = paste("Station", dat$id[i]))
         }
       })
 
@@ -377,52 +382,6 @@ mod_selection_server <- function(id, r){
       return(panels)
     })
 
-    ## ids() reactive function
-
-    ## Returns the ids of the accepted timeseries. (Obsolete?)
-    ids = shiny::reactive({
-      # Fetch coy of primary_table
-      pt = selection_server$primary_table
-      # Return id column filtered or ids in nafree() colnames
-      return(pt[pt$name %in% colnames(nafree()), "id"])
-    })
-
-    ## metadata_names() reactive function
-
-    ## Return database names of metadata
-    metadata_names = shiny::reactive({
-      # Fetch coy of primary_table
-      pt = selection_server$primary_table
-      # Return name column filtered for metadata
-      return(pt[pt$dtype == "Metadata", "name"])
-    })
-
-    ## metadata() reactive function
-
-    ## List of metadata tables
-    metadata = shiny::reactive(
-      lapply(metadata_names(), function(nm) {
-        if (paste0(nm, "_clean") %in% user.tables(r$db)$tablename) {
-          get.table(r$db, paste0(nm, "_clean"))
-        }
-      })
-    )
-
-    ## selected_metadata() reactive function
-
-    ## Aims retrieve relevant metadata in a format, that can be stored in the
-    ## database in order to be easily available for analysis.
-    selected_metadata = reactive({
-      # l = lapply(metadata(), function(df) {
-      #   if ("id" %in% colnames(df)) {
-      #     d = df[df$id %in% ids(),]
-      #     return(d)
-      #   }
-      # })
-      # l[sapply(l, is.null)] = NULL
-      # return(l)
-    })
-
     # 2.2. "Data pipeline" reactive functions
 
     ## The following eight reactive functions display some kind of action chain
@@ -468,6 +427,8 @@ mod_selection_server <- function(id, r){
       keys = selected_groups()$key
       # Build list. Per groupkey return timeseries
       l = lapply(keys, function(k) pt[pt$dgroup == k, "name"])
+      tt_cn = colnames(selection_server$timeseries_table)
+      l = lapply(l, function(nms) nms[nms %in% tt_cn])
       # Fetch names of selected groups
       names = selected_groups()$name
       # Returnnamed list
@@ -553,12 +514,16 @@ mod_selection_server <- function(id, r){
       return(dplyr::select_if(croptable(), ~!any(is.na(.))))
     })
 
-    ## 8. gap_conform() reactive function
+    ## 8. conform() reactive function
 
     ##
     ##
     ##
-    gap_conform = reactive({})
+    conform = reactive({
+      ok_ids = gaps()$id[gaps()$maxgap < gaps()$maxcor]
+      conform = nafree()[,c("timestamp", intersect(colnames(nafree()), ok_ids))]
+      return(conform)
+    })
 
     # 3. Reactive values initialization
 
@@ -598,17 +563,17 @@ mod_selection_server <- function(id, r){
       }
     )
 
-    ## Observe if new metadata are available from reactive values and
-    ## eventually add these to global reactive values.
-    shiny::observeEvent(
-      eventExpr = selected_metadata(),
-      handlerExpr = {
-        r$metadata = selected_metadata()
-      }
-    )
+    # ## Observe if new metadata are available from reactive values and
+    # ## eventually add these to global reactive values.
+    # shiny::observeEvent(
+    #   eventExpr = selected_metadata(),
+    #   handlerExpr = {
+    #     r$metadata = selected_metadata()
+    #   }
+    # )
 
     ## Observe the cache button. If pressed write sparam to database, as well as
-    ## the table with the prepared data from nafree() reactive function. Change
+    ## the table with the prepared data from conform() reactive function. Change
     ## cache_selection_trigger in order to update the analysos module.
     shiny::observeEvent(
       eventExpr = input$cache_selection_button,
@@ -622,7 +587,7 @@ mod_selection_server <- function(id, r){
           write.dbtable(r$db, "selection_table", df)
         }
         # Save selected data
-        write.dbtable(r$db, "selected_timeseries", nafree())
+        write.dbtable(r$db, "selected_timeseries", conform())
         # Update trigger
         r$cache_selection_trigger = !(r$cache_selection_trigger)
       }
@@ -779,8 +744,6 @@ mod_selection_server <- function(id, r){
         inputId = ns("cache_selection_button"),
         label = r$txt[[72]])
     )
-
-    ####
 
   })
 }

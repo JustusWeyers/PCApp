@@ -16,6 +16,10 @@ NumericMatrix pairs_cpp (NumericMatrix data, NumericVector FromTo) {
     int j = 1;
     // For each timestamp get the timestamps within by FromTo
     while (std::abs(data(i+j,0)-data(i,0)) < FromTo[1]) {
+      // Break loop if index i + j exceeds data.rows()
+      if ((i+j) > data.rows()) {
+        break;
+      }
       if (std::abs(data(i+j,0)-data(i,0)) >= FromTo[0]) {
         // Store value of current timestamp in first column
         values(runner,0) = data(i, 1);
@@ -26,10 +30,6 @@ NumericMatrix pairs_cpp (NumericMatrix data, NumericVector FromTo) {
       }
       // Increment j for the next FromTo-data
       j++;
-      // Break loop if index i + j exceeds data.rows()
-      if ((i+j) > data.rows()) {
-        break;
-      }
     }
   }
 

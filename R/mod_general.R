@@ -95,7 +95,6 @@ mod_general_server <- function(id, r){
         crs_string = unname(unlist(stringi::stri_split_lines(crs())))
         bbox_string = trimws(crs_string[grepl("BBOX", crs_string, fixed = TRUE)])
         coords = as.numeric(unname(unlist(stringr::str_extract_all(bbox_string, "[-+]?\\d+\\.*\\d*"))))
-        print(coords)
         coords_df = data.frame(
           lat = c(coords[1], coords[1], coords[3], coords[3]),
           lon = c(coords[2], coords[4], coords[4], coords[2])
@@ -112,23 +111,30 @@ mod_general_server <- function(id, r){
       }
     })
 
+
     ####################
     ### Server logic ###
     ####################
 
-    observeEvent(language(), {
+    observeEvent(c(language(), crs()), {
       r$lang = language()
+
+      if (crs_input() != r$settings["crs"] & !is.null(crs())) {
+        r$settings["crs"] = as.numeric(crs_input())
+      }
     })
-
-
 
     ##########
     ### UI ###
     ##########
 
-    output$ui_crs_textinput <- shiny::renderUI(
-      shiny::textInput(ns(paste0(RANDOMADDRESS, "_crs")), r$txt[[73]], value = "25833", placeholder = r$txt[[77]])
-    )
+    output$ui_crs_textinput <- shiny::renderUI({
+      shiny::textInput(
+        ns(paste0(RANDOMADDRESS, "_crs")),
+        r$txt[[73]],
+        value = shiny::isolate(r$settings[["crs"]]),
+        placeholder = r$txt[[77]])
+    })
 
     output$ui_lang_input <- shiny::renderUI(
       shiny::selectInput(
