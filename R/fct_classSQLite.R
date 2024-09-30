@@ -28,7 +28,7 @@ setMethod("connect.database",
             # Establish a connection to the SQLite file
             d@con <- DBI::dbConnect(
               RSQLite::SQLite(),
-              file.path(extdata_path, "sqlite.db")
+              file.path(extdata_path, "sqlitedb.db")
             )
             # Eventually create primary_table
             if (!("primary_table" %in% user.tables(d)$tablename)) {
@@ -37,6 +37,10 @@ setMethod("connect.database",
             # Eventually create primary_table
             if (!("datagroup_table" %in% user.tables(d)$tablename)) {
               create.datagrouptable(d)
+            }
+            # Eventually create timeseries_table
+            if (!("timeseries_table" %in% user.tables(d)$tablename)) {
+              create.timeseriestable(d)
             }
             return(d)
           })
@@ -162,13 +166,11 @@ setMethod("create.datagrouptable",
           methods::signature(d = "SQLite"),
           function(d){
             # SQL command to create group table
-            sql = r"(
+            sql =  r"(
               CREATE TABLE datagroup_table (
-              key INTEGER PRIMARY KEY  AUTOINCREMENT,
+              key            INTEGER PRIMARY KEY  AUTOINCREMENT,
               name           CHAR(100)  NOT NULL,
               dtype          CHAR(100)  NOT NULL,
-              color          CHAR(100)  NOT NULL,
-              readmethod     CHAR(100)  NOT NULL,
               gparam         CHAR(999)
               );
             )"
@@ -179,11 +181,14 @@ setMethod("create.datagrouptable",
 setMethod("create.timeseriestable",
           methods::signature(d = "SQLite"),
           function(d){
-            #create data frame with 0 rows and 3 columns
-            df <- data.frame(matrix(ncol = 1, nrow = 0))
-            #provide column names
-            colnames(df) <- c('timestamp')
-            DBI::dbWriteTable(d@con, "timeseries_table", df)
+            # SQL command to create group table
+            sql = r"(
+              CREATE TABLE timeseries_table (
+                  timestamp      date
+              );
+            )"
+            # Run command on database
+            DBI::dbExecute(d@con, sql)
           })
 
 setMethod("get.table",
@@ -262,7 +267,6 @@ setMethod("get.key",
           methods::signature(d = "SQLite"),
           function (d, dataObject) {
             sql = paste0(r"(SELECT key FROM primary_table WHERE name LIKE ')", dataObject@name, r"(';)")
-            print(sql)
             return(DBI::dbGetQuery(d@con, sql)$key)
           })
 
@@ -295,21 +299,37 @@ setMethod("replace.by.primary_key",
 setMethod("clear.db",
           methods::signature(d = "SQLite"),
           function (d) {
-            sql = paste("DROP TABLE ", toString(paste0('"', user.tables(d)$tablename, '"')))
-            DBI::dbExecute(d@con, sql)
+            #DROP TABLE [IF EXISTS] [schema_name.]table_name;
+            tnms = user.tables(d)$tablename
+            tnms = setdiff(tnms, c("sqlite_sequence"))
+            for (tn in tnms) {
+              sql = paste0('DROP TABLE IF EXISTS ', paste0('"', tn, '"'), ';')
+              print(sql)
+              DBI::dbExecute(d@con, sql)
+            }
           })
 
 setMethod("merge.timeseries",
           methods::signature(d = "SQLite"),
           function (d, names) {
 
-            # Clean table from old columns
-            sql = paste0("ALTER TABLE timeseries_table ", toString(paste("DROP COLUMN IF EXISTS", names)), ";")
-            suppressWarnings(DBI::dbExecute(d@con, sql))
+            print("merge")
 
-            # Join new columns together
-            sql = paste("SELECT * FROM timeseries_table", paste(paste("NATURAL FULL OUTER JOIN", paste0(names, "_clean")), collapse = " "), ";")
+            cnms = colnames(get.table(d, "timeseries_table"))
+
+            # Clean table from old columns
+            for (nm in names) {
+              if (nm %in% cnms) {
+                sql = paste0("ALTER TABLE timeseries_table DROP COLUMN ", nm,";")
+                print(sql)
+                suppressWarnings(DBI::dbExecute(d@con, sql))
+              }
+            }
+
+            sql = paste0("with cte as (SELECT * FROM timeseries_table ", paste(paste0("FULL JOIN ", paste0(names, "_clean"), " USING (timestamp)"), collapse = " "), ") select * from cte;")
+            print(sql)
             df = DBI::dbGetQuery(d@con, sql)
+
             write.dbtable(d, "timeseries_table", df)
             print("done")
           })

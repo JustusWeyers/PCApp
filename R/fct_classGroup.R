@@ -80,8 +80,10 @@ setMethod("groupServer",
               #################
 
               get_gparam = function() {
+                print("--- Get gparam ----")
                 dgt = get.table(shiny::isolate(r$db), "datagroup_table")
                 gparam = as.list(jsonlite::fromJSON(dgt[dgt$key == obj@key, "gparam"]))
+                print(gparam)
                 return(gparam)
               }
 

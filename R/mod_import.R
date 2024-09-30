@@ -118,7 +118,6 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
 
     # 3.2. Observe predefined groups
     observeEvent(import_server$predefined_groups, {
-      print(get.table(r$db, "datagroup_table"))
       lapply(import_server$predefined_groups, function(n) {
         if (!(n %in% get.table(r$db, "datagroup_table")$name)) {
           # If groupname is valid add group to datagroup_table

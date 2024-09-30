@@ -202,7 +202,8 @@ mod_PCA_ui <- function(id){
             width = "100%", solidHeader = TRUE,
             shiny::fluidRow(
               col_12(
-                shiny::plotOutput(ns("ui_combiplot"))
+                shiny::plotOutput(ns("ui_combiplot")),
+                shiny::uiOutput(ns("daterange_slider"))
               )
             )
           ),
@@ -221,7 +222,7 @@ mod_PCA_ui <- function(id){
       )
     ),
 
-    ## 6.
+    ## 5. Regressions
 
     shiny::tabPanel(
       # Title of the tabPanel
@@ -230,12 +231,108 @@ mod_PCA_ui <- function(id){
       shiny::tagList(
         shiny::fluidPage(
 
+          shiny::uiOutput(ns("ui_header7")),
+
+          fluidRow(
+            col_12(
+              shinydashboard::box(
+                width = "100%", solidHeader = TRUE,
+                shiny::fluidRow(
+                  col_12(
+                    # shiny::plotOutput(ns("referenzHydrograph_plot"))
+                    shiny::plotOutput(ns("ref_ts_plot"))
+                  )
+                )
+              )
+            )
+          ),
+
+          fluidRow(
+            col_6(
+              shinydashboard::box(
+                width = "100%", solidHeader = TRUE,
+                shiny::fluidRow(
+                  col_12(
+                    shiny::plotOutput(
+                      ns("ref_bar_plot"),
+                      click = ns("bar_click")
+                    )
+                  )
+                )
+              )
+            ),
+            col_6(
+              shinydashboard::box(
+                width = "100%", solidHeader = TRUE,
+                shiny::fluidRow(
+                  col_12(
+                    shiny::verbatimTextOutput(ns("ref_summary"))
+                  )
+                )
+              )
+            )
+          ),
+
+          fluidRow(
+            col_12(
+              shinydashboard::box(
+                width = "100%", solidHeader = TRUE,
+                shiny::fluidRow(
+                  col_12(
+                    # shiny::plotOutput(ns("referenzHydrograph_plot"))
+                    shiny::tableOutput(ns("ui_regression_pcs"))
+                  )
+                )
+              )
+            )
+          )
+
+        )
+      )
+    ),
+
+
+    ## 6. Correlations between loadings and metadata (rasterdata)
+    shiny::tabPanel(
+      # Title of the tabPanel
+      shiny::textOutput(ns("ui_tab_title_correlations")),
+      # Fluid page
+      shiny::tagList(
+        shiny::fluidPage(
+
+          shiny::uiOutput(ns("ui_header8")),
+
+          fluidRow(
+            col_12(
+              shinydashboard::box(
+                width = "100%", solidHeader = TRUE,
+                shiny::fluidRow(
+                  col_12(
+                    shiny::plotOutput(ns("ui_corr_plot"))
+                  )
+                )
+              )
+            )
+          ),
+
+          fluidRow(
+            col_12(
+              shinydashboard::box(
+                width = "100%", solidHeader = TRUE,
+                shiny::fluidRow(
+                  col_12(
+                    shiny::uiOutput(ns("ui_choose_corr"))
+
+                  )
+                )
+              )
+            )
+          )
         )
       )
     )
+
   )
-
-
 }
 
 #' PCA Server Functions
@@ -317,10 +414,14 @@ mod_PCA_server <- function(id, r){
       return(gr)
     }
 
+    ## color() function
+
     color = function(pt, dgt, hashs) {
       gr = pt[pt$name %in% hashs, "dgroup"]
       gr = sapply(gr, function (gkey) jsonlite::fromJSON(dgt[dgt$key == gkey,"gparam"])[["color"]])
     }
+
+    ## get_timeseries() function
 
     get_timeseries = function(db) {
       if ("selected_timeseries" %in% user.tables(db)$tablename) {
@@ -331,6 +432,8 @@ mod_PCA_server <- function(id, r){
         return(data.frame())
       }
     }
+
+    ## kommunalitaeten() function
 
     kommunalitaeten = function(eigenvalues){
       # Calculate percent of total variance
@@ -360,6 +463,8 @@ mod_PCA_server <- function(id, r){
 
       return(p)
     }
+
+
 
     # 2. Reactive functions definitions
 
@@ -411,6 +516,10 @@ mod_PCA_server <- function(id, r){
     pc_names_eigen = shiny::reactive(
       pc_names()[eigenvalues()>1]
     )
+
+    first_date = shiny::reactive(min(pca_server$ts$timestamp))
+
+    last_date = shiny::reactive(max(pca_server$ts$timestamp))
 
     ## geo_loadings() reactive function
 
@@ -508,6 +617,10 @@ mod_PCA_server <- function(id, r){
       df = pcs()[,c("timestamp", "PC1")]
       df$combi = (1-input$weight) * df$PC1 + input$weight * pcs()[,input$combi_pc]
       colnames(df) = c("timestamp", "PC1", "combi")
+
+      i = lubridate::interval(input$date_combi_slider[1], input$date_combi_slider[2])
+      df = subset(x = df, subset = lubridate::`%within%`(df$timestamp, i))
+
       p = ggplot2::ggplot(df, ggplot2::aes(x = timestamp)) +
         ggplot2::geom_line(ggplot2::aes(y = PC1), col = "grey") +
         ggplot2::geom_line(ggplot2::aes(y = combi), col = "#F8766D") +
@@ -536,22 +649,65 @@ mod_PCA_server <- function(id, r){
       return(plotdf)
     })
 
-    output$ui_damping_plot = shiny::renderPlot({
-      if (is.null(damping())) return(NULL)
-      p = ggplot2::ggplot() +
-        ggplot2::geom_boxplot(
-          data = damping(),
-          ggplot2::aes(x = group, y = damping_coef)
-        ) +
-        ggplot2::theme_minimal()
-      if (!is.null(pca_server$selected_id)) {
-        p = p + ggplot2::geom_point(
-          data = damping()[damping()$id == pca_server$selected_id,],
-          ggplot2::aes(x = group, y = damping_coef)
-        )
+    refhydr = shiny::reactive({
+      linmodel = function(df) {
+        lm(ts~., data = df)
       }
+
+      pcs = pcs()[,input$regression_pcs]
+
+      df = tibble::tibble(hashs = hashs())
+
+      df$data = sapply(df$hashs, function(hash) {
+        df = data.frame(cbind(pca_server$ts[,hash], pcs))
+        colnames(df) = c("ts", input$regression_pcs)
+        return(df)
+      }, simplify = FALSE)
+
+      df = dplyr::mutate(df, model = data |> purrr::map(linmodel))
+
+      df = df |> dplyr::mutate(
+        glance = purrr::map(model, broom::glance),
+        rsq = glance |> purrr::map_dbl("r.squared"),
+        tidy = purrr::map(model, broom::tidy),
+        augment = purrr::map(model, broom::augment),
+        sm = purrr::map(model, summary)
+      )
+
+      df = df |> dplyr::arrange(dplyr::desc(rsq))
+
+      return(df)
+    })
+
+    output$ref_ts_plot = shiny::renderPlot({
+      if (is.null(pca_server$selected_id)) return(NULL)
+      plotdf = refhydr()[refhydr()$hashs == pca_server$selected_id,] |>
+        tidyr::unnest(augment)
+      plotdf$timestamp = pca_server$ts$timestamp
+      p = ggplot2::ggplot(plotdf) +
+        ggplot2::geom_line(ggplot2::aes(x = timestamp, y = ts), color = "grey") +
+        ggplot2::geom_line(ggplot2::aes(x = timestamp, y = .fitted)) +
+        ggplot2::theme_minimal()
       return(p)
-    }, width = 500, height = 500)
+    })
+
+    output$ref_bar_plot = shiny::renderPlot({
+      plotdf = refhydr()
+      ggplot2::ggplot(plotdf, ggplot2::aes(x = stats::reorder(hashs, rsq), y = rsq)) +
+        ggplot2::geom_bar(stat = "identity") +
+        ggplot2::ylim(c(0, 1)) +
+        ggplot2::coord_flip() +
+        ggplot2::theme_minimal()
+    })
+
+    output$ref_summary = shiny::renderPrint({
+      if (!is.null(pca_server$selected_id)) {
+        sm_ = refhydr() |>
+          dplyr::filter(hashs == pca_server$selected_id) |>
+          dplyr::select(sm)
+        return(sm_$sm)
+      }
+    })
 
     # 3. Reactive values initialization
 
@@ -584,7 +740,24 @@ mod_PCA_server <- function(id, r){
       )[,3]
     })
 
+    observeEvent(input$bar_click, {
+      i = round(input$bar_click$y)
+      pca_server$selected_id = refhydr()$hashs[order(refhydr()$rsq)][i]
+    })
+
+
     # 5. UI elements rendering
+
+    output$daterange_slider = shiny::renderUI(
+      shiny::sliderInput(
+        inputId = ns("date_combi_slider"),
+        "Slider",
+        min = first_date(),
+        max = last_date(),
+        value = c(first_date(), last_date()),
+        width = "100%"
+      )
+    )
 
     ## ggf. irgendwann loeschen (auch ui)
     output$selected_id = shiny::renderText(
@@ -703,6 +876,24 @@ mod_PCA_server <- function(id, r){
       return(p)
     }, height = 800, width = 800)
 
+
+    output$ui_damping_plot = shiny::renderPlot({
+      if (is.null(damping())) return(NULL)
+      p = ggplot2::ggplot() +
+        ggplot2::geom_boxplot(
+          data = damping(),
+          ggplot2::aes(x = group, y = damping_coef)
+        ) +
+        ggplot2::theme_minimal()
+      if (!is.null(pca_server$selected_id)) {
+        p = p + ggplot2::geom_point(
+          data = damping()[damping()$id == pca_server$selected_id,],
+          ggplot2::aes(x = group, y = damping_coef)
+        )
+      }
+      return(p)
+    }, width = 500, height = 500)
+
     output$select_PC = shiny::renderUI({
       shiny::selectInput(
         inputId = ns("select_PC"),
@@ -750,6 +941,83 @@ mod_PCA_server <- function(id, r){
       shiny::titlePanel(r$txt[[88]])
     })
 
+    output$ui_header7 <- shiny::renderUI({
+      shiny::titlePanel(r$txt[[95]])
+    })
+
+    output$ui_header8 <- shiny::renderUI({
+      shiny::titlePanel(r$txt[[94]])
+    })
+
+    output$ui_regression_pcs = shiny::renderUI(
+      shiny::checkboxGroupInput(
+        inputId = ns("regression_pcs"),
+        label = "Choose PC's for linear regression",
+        choices = pc_names(),
+        selected = pc_names()[eigenvalues()>1],
+        inline = TRUE,
+      )
+    )
+
+    corplotdf = shiny::reactive({
+      l = lapply(selected_metadata(), function(df)
+        if(input$corr_data %in% colnames(df)) {
+          return(df[,c("id", input$corr_data)])
+        } else {
+          return(NULL)
+        }
+      )
+
+      df = dplyr::distinct(dplyr::bind_rows(l))
+
+      df$id = pca_server$primary_table[pca_server$primary_table$id %in% df$id,"name"]
+
+      df$group = group(
+        pt = pca_server$primary_table,
+        dgt = pca_server$datagroup_table,
+        hashs = df$id
+      )
+
+      df$color = color(
+        pt = pca_server$primary_table,
+        dgt = pca_server$datagroup_table,
+        hashs = df$id
+      )
+
+      df = merge(df, data.frame(loadings()), by.x = "id", by.y = "row.names")
+
+      df = df[,c("id", input$corr_data, "group", "color", input$corr_pc)]
+
+      colnames(df) = c("id", "data", "group", "color", "pc")
+
+      return(df)
+    })
+
+    output$ui_corr_plot = shiny::renderPlot({
+
+      if (is(corplotdf()$data, "numeric")) {
+        p = ggplot2::ggplot(corplotdf(), ggplot2::aes(x = pc, y = data)) +
+          ggplot2::geom_point()
+        return(p)
+      }
+      if (is(corplotdf()$data, "character")) {
+        p = ggplot2::ggplot(corplotdf(), ggplot2::aes(x = data, y = pc)) +
+          ggplot2::geom_boxplot()
+        return(p)
+      }
+    })
+
+    output$ui_choose_corr <- shiny::renderUI({
+      shiny::fluidRow(
+        col_6(
+          shiny::selectInput(inputId = ns("corr_pc"), label = r$txt[[96]], choices = pc_names())
+        ),
+        col_6(
+          shiny::selectInput(inputId = ns("corr_data"), label = r$txt[[96]], choices = unique(unlist(sapply(selected_metadata(), colnames))))
+        )
+      )
+    })
+
     output$ui_tab_title_pca <- shiny::renderText(r$txt[55])
 
     output$ui_tab_title_loadings <- shiny::renderText(r$txt[63])
@@ -758,7 +1026,9 @@ mod_PCA_server <- function(id, r){
 
     output$ui_tab_title_damping <- shiny::renderText(r$txt[91])
 
-    output$ui_tab_title_regression = shiny::renderText(r$txt[93])
+    output$ui_tab_title_regression <- shiny::renderText(r$txt[93])
+
+    output$ui_tab_title_correlations <- shiny::renderText(r$txt[94])
 
   })
 }

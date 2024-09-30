@@ -80,7 +80,7 @@ setGeneric("create.primarytable", function(d) standardGeneric("create.primarytab
 ## Create table for data groups
 
 ### Method to create datagroup_table with columns "key", "name",
-### "dtype", "color", "readmethod" and "param".
+### "dtype" and "gparam".
 setGeneric("create.datagrouptable", function(d) standardGeneric("create.datagrouptable"))
 
 setGeneric("create.timeseriestable", function(d) standardGeneric("create.timeseriestable"))

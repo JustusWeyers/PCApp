@@ -68,8 +68,6 @@ setMethod("boxServer",
               )
 
               map = reactive({
-                print("SHP")
-                print(shp())
                 ggplot2::ggplot(shp()) +
                   ggplot2::geom_sf() +
                   ggplot2::theme_minimal()
@@ -98,8 +96,6 @@ setMethod("data_wrangling",
           methods::signature(dataobject = "VectorData"),
           function(dataobject, db, options) {
             indata = mydata(db, dataobject@name, options[["readmethod"]], options)
-            print("### IN Vectordata")
-            print(head(indata))
             # write.dbtable(db, paste0(dataobject@name, "_readin"), indata)
             # hdata = head_data(db, dataobject@name, options[["readmethod"]], options)
             # write.dbtable(db, paste0(dataobject@name, "_head"), hdata)
