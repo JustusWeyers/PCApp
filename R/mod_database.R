@@ -113,16 +113,22 @@ mod_database_server <- function(id, r) {
     connect = reactive({
       # If input$dbtype is PostgreSQL
       if (input$dbtype == "RPostgres") {
-        tryCatch(
+        tryCatch({
+          r$settings[["DBMS"]] = "RPostgres"
           # Try connecting to PostgreSQL
-          connect.database(instantiatePostgreSQL(credentials())),
+          return(connect.database(instantiatePostgreSQL(credentials())))
+          },
           # Otherwise connect to SQLite
-          error = function(e) connect.database(instantiateSQLite())
+          error = function(e) {
+            r$settings[["DBMS"]] = "RSQLite"
+            return(connect.database(instantiateSQLite()))
+          }
         )
       }
       # If input$dbtype is SQLite
       else if (input$dbtype == "RSQLite") {
-        connect.database(instantiateSQLite())
+        r$settings[["DBMS"]] = "RSQLite"
+        return(connect.database(instantiateSQLite()))
       }
     })
 
@@ -199,19 +205,6 @@ mod_database_server <- function(id, r) {
         r$db = connect()
       }
     )
-
-    ## On changes regarding the connected database stored in r$db
-    ## make primary_table and datagroup_table globally available
-    shiny::observeEvent(
-      eventExpr = r$db,
-      handlerExpr = {
-        # Share primary_table
-        r$primary_table = get.table(d = r$db, tablename = "primary_table")
-        # Share datagroup_table
-        r$datagroup_table = get.table(d = r$db, tablename = "datagroup_table")
-      }
-    )
-
 
     observeEvent(input$clear_button, {
       clear.db(r$db)

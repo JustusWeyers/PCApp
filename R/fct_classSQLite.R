@@ -327,8 +327,11 @@ setMethod("merge.timeseries",
             }
 
             sql = paste0("with cte as (SELECT * FROM timeseries_table ", paste(paste0("FULL JOIN ", paste0(names, "_clean"), " USING (timestamp)"), collapse = " "), ") select * from cte;")
-            print(sql)
             df = DBI::dbGetQuery(d@con, sql)
+            df = df[order(df$timestamp),]
+            df$timestamp = as.Date(df$timestamp)
+            df = df[is(df$timestamp, "Date"),]
+            print(head(df))
 
             write.dbtable(d, "timeseries_table", df)
             print("done")

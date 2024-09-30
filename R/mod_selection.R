@@ -211,7 +211,7 @@ mod_selection_server <- function(id, r){
     first_obs = shiny::reactive(
       if (length(selection_server$timeseries_table$timestamp)>0) {
         # Get first element of selection_server$timeseries_table$timestamp
-        utils::head(selection_server$timeseries_table$timestamp, n = 1)
+        as.Date(utils::head(selection_server$timeseries_table$timestamp, n = 1))
       }
     )
 
@@ -222,7 +222,7 @@ mod_selection_server <- function(id, r){
     last_obs = shiny::reactive(
       if (length(selection_server$timeseries_table$timestamp)>0) {
         # Get last element of selection_server$timeseries_table$timestamp
-        utils::tail(selection_server$timeseries_table$timestamp, n = 1)
+        as.Date(utils::tail(selection_server$timeseries_table$timestamp, n = 1))
       }
     )
 
