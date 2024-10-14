@@ -103,7 +103,8 @@ mod_selection_ui <- function(id){
         shiny::fluidRow(
           col_2(
             shiny::uiOutput(ns("ui_alpha_slider")),
-            shiny::uiOutput(ns("ui_dtclass_input"))
+            shiny::uiOutput(ns("ui_dtclass_input")),
+            shiny::uiOutput(ns("ui_acor_button"))
           ),
           col_10(
             DT::DTOutput(ns("gapdf"))
@@ -270,7 +271,7 @@ mod_selection_server <- function(id, r){
 
       # Set up a result data.frame. It contains a column with names of the
       # accepted timeseries and a yet empty column of maximum gap
-      dat = data.table::data.table(
+      dat = data.frame(# data.table::data.table(
         id = colnames(nafree())[colnames(nafree()) != "timestamp"],
         maxgap = NA,
         maxcor = NA
@@ -296,11 +297,11 @@ mod_selection_server <- function(id, r){
       # Paste some classnames for the result of autocorrelation calculation
       class_names = paste0(classes[-length(classes)], "...", (classes[-1]-1))
       # Set up a empty data.table (column names starting with numbers)
-      corr = data.table::data.table(
+      corr = data.frame( #data.table::data.table(
         matrix(ncol = length(class_names), nrow = nrow(dat))
       )
       # Give the data.table the 'class_names' as column names
-      colnames(corr) = class_names
+      colnames(corr) = paste0("dt", class_names)
 
       # Iterate over names in dat names-column and calculate the level of
       # autocorrelation for each class. Framed by a shiny progress bar.
@@ -312,6 +313,10 @@ mod_selection_server <- function(id, r){
           data$timestamp = as.Date(data$timestamp)
           # Calculate Autocorrelation via R/utils_autocorrelation.R
           acordf = acor(data = data, classes = classes, alpha = alpha)
+          # print("Combine")
+          # print(acordf)
+          # print(corr)
+          # print(1:nrow(acordf))
           # Fill correlation data into corr data.table
           corr[i,1:nrow(acordf)] = acordf$Autocorrelation
 
@@ -322,19 +327,23 @@ mod_selection_server <- function(id, r){
             ts = data$timestamp,
             diff = c(diff(as.numeric(data$timestamp)), 0)
           )
+
           # Crop gapsdf to contain only gaps within the period of investigation
           gapdf = subset(
             x = gapdf,
             subset = lubridate::`%within%`(gapdf$ts, period_of_investigation())
           )
+
           # Write maximum difference or zero to 'dat' data.frame at position i
           if (nrow(gapdf) >= 1) {
             dat$maxgap[i] = max(gapdf$diff)
           } else {
             dat$maxgap[i] = 0
           }
+
           # Increase loading bar
           shiny::incProgress(1/nrow(dat), detail = paste("Station", dat$id[i]))
+
         }
       })
 
@@ -520,9 +529,11 @@ mod_selection_server <- function(id, r){
     ##
     ##
     conform = reactive({
-      ok_ids = gaps()$id[gaps()$maxgap < gaps()$maxcor]
-      conform = nafree()[,c("timestamp", intersect(colnames(nafree()), ok_ids))]
-      return(conform)
+      if (ncol(selection_server$gaps)>0) {
+        ok_ids = gaps()$id[gaps()$maxgap < gaps()$maxcor]
+        conform = nafree()[,c("timestamp", intersect(colnames(nafree()), ok_ids))]
+        return(conform)
+      }
     })
 
     # 3. Reactive values initialization
@@ -536,7 +547,8 @@ mod_selection_server <- function(id, r){
       sparam = get_sparam(shiny::isolate(r$db)),
       timeseries_table = get.table(shiny::isolate(r$db), "timeseries_table"),
       primary_table = get.table(shiny::isolate(r$db), "primary_table"),
-      datagroup_table = get.table(shiny::isolate(r$db), "datagroup_table")
+      datagroup_table = get.table(shiny::isolate(r$db), "datagroup_table"),
+      gaps = data.frame()
     )
 
     # 4. Server logic via observers
@@ -572,6 +584,13 @@ mod_selection_server <- function(id, r){
     #   }
     # )
 
+    shiny::observeEvent(
+      eventExpr = input$calc_autocor,
+      handlerExpr = {
+        selection_server$gaps = gaps()
+      }
+    )
+
     ## Observe the cache button. If pressed write sparam to database, as well as
     ## the table with the prepared data from conform() reactive function. Change
     ## cache_selection_trigger in order to update the analysos module.
@@ -586,6 +605,11 @@ mod_selection_server <- function(id, r){
           # Write the data.frame to batabase
           write.dbtable(r$db, "selection_table", df)
         }
+
+        if (is.null(conform())) {
+          selection_server$gaps = gaps()
+        }
+
         # Save selected data
         write.dbtable(r$db, "selected_timeseries", conform())
         # Update trigger
@@ -706,12 +730,34 @@ mod_selection_server <- function(id, r){
     ## Render a range slider for accepted
     ## autocorrelation level.
     output$ui_alpha_slider = renderUI(
-      expr = shiny::sliderInput(
-        inputId = ns("alpha_slider"),
-        label = r$txt[[80]],
-        min = 0.1,
-        max = 1.0,
-        value = 0.5,
+
+      shiny::tagList(
+        tags$style(type='text/css', "
+          #reverseSlider .irs-bar {
+              border-top: 1px solid #ddd;
+              border-bottom: 1px solid #ddd;
+              background: linear-gradient(to bottom, #DDD -50%, #FFF 150%);
+          }
+          #reverseSlider .irs-bar-edge {
+              border: 1px solid #ddd;
+              background: linear-gradient(to bottom, #DDD -50%, #FFF 150%);
+              border-right: 0;
+          }
+          #reverseSlider .irs-line {
+              background: #428bca;
+              border: 1px solid #428bca;
+          }
+        "),
+        div(id = "reverseSlider",
+          shiny::sliderInput(
+            inputId = ns("alpha_slider"),
+            label = r$txt[[80]],
+            min = 0.1,
+            max = 1.0,
+            value = 0.5,
+            step = 0.01
+          )
+        )
       )
     )
 
@@ -727,10 +773,17 @@ mod_selection_server <- function(id, r){
       )
     )
 
+    output$ui_acor_button = renderUI(
+      expr = shiny::actionButton(
+        inputId = ns("calc_autocor"),
+        label =  r$txt[[100]]
+      )
+    )
+
     ## Render the table in the third section representing the data.frame with
     ## information about maximum gap length and levels of autocorrelation.
     output$gapdf = DT::renderDataTable(
-      expr = gaps(), options = list(scrollX = TRUE)
+      expr = selection_server$gaps, options = list(scrollX = TRUE)
     )
 
     ## Render title for the cache section.

@@ -1,0 +1,12 @@
+Unter dem Abschnitt <strong>PCA</strong> findet die eigentliche Hauptkomponentenanalyse statt und verschiedene Möglichkeiten zur Auswertung der Hauptkomponenten und Ladungen werden angeboten. Je nach Verfügbarkeit von Metadaten umfasst diese Auswertung folgende Punkte:
+
+1. Visualisierung der Ergebnisse der <strong>PCA</strong> als Zeitreihen
+2. Visualisierung der <strong>Komponentenladungen</strong>
+3. <strong>Kombinationen von Hauptkomponenten</strong>
+4. <strong>Paarungen von Komponentenladungen</strong>
+5. Berechnung von Referenzhydrographen mittels </strong>Linearer Regression<strong>
+6. <strong>Korrelationen</strong> zwischen Komponentenladungen und Metadaten
+
+Die Punkte 2 und 6 hängen für die Darstellung von räumlichen Verteilungen und Korrelationen vom Vorhandensein geeigneter Metadaten ab.
+
+

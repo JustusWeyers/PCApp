@@ -1,0 +1,4 @@
+Im <strong>Import</strong> Abschnitt können Zeitreihen, Metadaten und Vektordaten in jeweils eigenen Abschnitten in das Programm geladen werden. Für das Importieren der Zeitreihen ist es notwendig, zunächst Gruppen anzulegen. Anhand dieser Gruppen können Zeitreihen verschiedener Arten strukturiert eingeladen und in der Hauptkomponentenanalyse unterschieden werden. Für die Metadaten und die Vektordaten existieren jeweils vordefinierte Gruppen.
+
+Als erstes nach dem Einlesen der Daten finden sich in der Box <strong>Tabellenoptionen</strong> die notwendigen Formatierungsparameter, mit denen das Programm die Tabellen zu interpretieren weiß.
+Zweitens müssen in der Box <strong>Gruppenoptionen</strong> die für die weitere Analyse verwendeten Spalten und andere notwendige Parameter festgelegt werden. Aufseiten der Zeitreihen umfasst das zum Beispiel die Spalten, in der sich die Aufnahmezeitpunkte und die Messwerte befinden, nebst Angaben zum Format von Datum und Fehldaten.

@@ -960,6 +960,8 @@ mod_PCA_server <- function(id, r){
     )
 
     corplotdf = shiny::reactive({
+      print("# --- Cor ---------")
+
       l = lapply(selected_metadata(), function(df)
         if(input$corr_data %in% colnames(df)) {
           return(df[,c("id", input$corr_data)])
@@ -968,9 +970,35 @@ mod_PCA_server <- function(id, r){
         }
       )
 
+
       df = dplyr::distinct(dplyr::bind_rows(l))
 
-      df$id = pca_server$primary_table[pca_server$primary_table$id %in% df$id,"name"]
+      idhash = na.omit(pca_server$primary_table[,c("name", "id")])
+
+      df$id = purrr::map_vec(df$id, function(id) {
+        print(id)
+        idhash$name[idhash$id == id]
+      })
+
+      print("SUMMARIZE")
+
+      print(head(df))
+
+      colnames(df) = c("id", "data")
+
+      if (is(df$data, "numeric")) {
+        df = df |>
+          dplyr::group_by(id) |>
+          dplyr::summarise(data = mean(data))
+      }
+
+      if (is(df$data, "character")) {
+        df = df |>
+          dplyr::group_by(id) |>
+          dplyr::summarise(data = paste(data, collapse = ", "))
+      }
+
+      print(head(df))
 
       df$group = group(
         pt = pca_server$primary_table,
@@ -986,7 +1014,7 @@ mod_PCA_server <- function(id, r){
 
       df = merge(df, data.frame(loadings()), by.x = "id", by.y = "row.names")
 
-      df = df[,c("id", input$corr_data, "group", "color", input$corr_pc)]
+      df = df[,c("id", "data", "group", "color", input$corr_pc)]
 
       colnames(df) = c("id", "data", "group", "color", "pc")
 
@@ -997,12 +1025,16 @@ mod_PCA_server <- function(id, r){
 
       if (is(corplotdf()$data, "numeric")) {
         p = ggplot2::ggplot(corplotdf(), ggplot2::aes(x = pc, y = data)) +
-          ggplot2::geom_point()
+          ggplot2::geom_point() +
+          ggplot2::theme_minimal()
+
         return(p)
       }
       if (is(corplotdf()$data, "character")) {
         p = ggplot2::ggplot(corplotdf(), ggplot2::aes(x = data, y = pc)) +
-          ggplot2::geom_boxplot()
+          ggplot2::scale_x_discrete(labels = scales::label_wrap(10)) +
+          ggplot2::geom_boxplot() +
+          ggplot2::theme_minimal()
         return(p)
       }
     })

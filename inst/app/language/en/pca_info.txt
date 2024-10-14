@@ -1,0 +1,10 @@
+<p align='justify'>The actual principal component analysis takes place in the <strong>PCA</strong> section and various options for evaluating the principal components and loads are offered. Depending on the availability of metadata, this evaluation includes the following points:
+
+1. Visualization of the <strong>PCA</strong> results as time series
+2. Visualization of the <strong>Component loadings</strong>
+3. <strong>Combinations of main components</strong>
+4. <strong>Pairing of component loadings</strong>
+5. Calculation of reference hydrographs using <strong>Linear Regression</strong>
+6. <strong>Correlations</strong> between component loadings and metadata
+
+Points 2 and 6 highly depend on the availability of suitable metadata for the representation of spatial distributions and correlations.</p>

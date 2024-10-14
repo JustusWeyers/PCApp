@@ -8,11 +8,14 @@ License: MIT + file LICENSE
 Depends: 
     R (>= 2.10)
 Imports: 
+    broom,
     colourpicker,
     config (>= 0.3.2),
+    data.table,
     DBI,
     dplyr,
     DT,
+    fresh,
     ggplot2,
     golem (>= 0.4.1),
     gplots,
@@ -27,6 +30,7 @@ Imports:
     rnaturalearth,
     RPostgres,
     RSQLite,
+    scales,
     sf,
     shiny (>= 1.8.0),
     shinydashboard,
@@ -34,13 +38,12 @@ Imports:
     stats,
     stringi,
     stringr,
+    tibble,
     tidyr,
     tools,
     utils,
     zoo
 Suggests: 
-    knitr,
-    rmarkdown,
     spelling,
     testthat (>= 3.0.0)
 LinkingTo: 
@@ -50,4 +53,3 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.3.2
-VignetteBuilder: knitr

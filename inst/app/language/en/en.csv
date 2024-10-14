@@ -21,7 +21,7 @@ Clear
 Users
 Database management system
 Tables
-Upload
+UploadComponent loadings
 Timeseries
 Metadata
 Shape files
@@ -45,7 +45,7 @@ Comment character
 Upload files
 Group options
 Group management
-Upload options
+Table options
 Select function to read data
 Group color
 Head
@@ -60,7 +60,7 @@ Home
 Map
 Apply
 Clear Database
-Loadings
+Component loadings
 Communalities
 Principal components
 General
@@ -83,15 +83,18 @@ Number of available timeseries
 Number
 Multiply principal component matrix by -1
 PCA parameters
-Combinations of PCs
+Combinations of principal components
 Select principal component
 Combination plot
 Select principal components
 Weight of
-Damping
+Pairing of component loadings
 Loading on
-Regression
+Linear regression
 Correlations
 Reference hydrograph
 Choose PC
 Choose Data
+An application for principal component analysis with time series
+Rerun
+Run

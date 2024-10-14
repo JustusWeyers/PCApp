@@ -1,0 +1,3 @@
+Der <strong>Export</strong> Abschnitt dient dem Export von erstellten Datensätzen und Graphiken.
+Zu diesem Zweck kann ein Ordner mit entsprechenden Unterordnern heruntergeladen werden.
+ 

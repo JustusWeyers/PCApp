@@ -690,7 +690,7 @@ setMethod("groupServer",
                     status = "primary",
                     solidHeader = TRUE,
                     collapsible = TRUE,
-                    collapsed = FALSE,
+                    collapsed = TRUE,
 
                     # Box content
                     shiny::fluidRow(

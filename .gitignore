@@ -5,9 +5,7 @@
 .DS_Store
 .quarto
 /inst/extdata/*.sqlite
-/inst/extdata/*.db
 *.env
 shinyproxy-3.0.2.jar
 application.properties
 shinyproxy.log*
-inst/doc

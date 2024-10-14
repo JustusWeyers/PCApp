@@ -140,7 +140,7 @@ mod_general_server <- function(id, r){
       shiny::selectInput(
         inputId = ns(paste0(RANDOMADDRESS, "_lang")),
         label = NULL,
-        choices = sort(names(PCApp:::internal$apptext)),
+        choices = sort(names(internal$apptext)),
         selected = r$lang)
     )
 

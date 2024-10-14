@@ -1,0 +1,7 @@
+Nachdem die Zeitreihen eingelesen wurden, müssen diese unter dem Abschnitt <strong>Auswahl</strong> auf ihre Eignung für die Hauptkomponentenanalyse (HKA) hin untersucht werden. Ausschlaggebend für die Eignung sind zwei Kriterien:
+
+1. Verfügbarkeit der Zeitreihe über den gesamten Zeitraum
+2. Verträgliche Menge und Größe von Datenlücken
+
+Darüber hinaus kann entschieden werden, mit welchen Datengruppen die HKA durchgeführt werden und ob eine Reduktion der Zeitreihen auf bestimmte Wochentage erfolgen soll.
+Schließlich ist es möglich, die erstellten Datensätze zwischenzuspeichern.

@@ -1,0 +1,6 @@
+<p align='justify'>After the time series have been imported, they must be examined for their suitability for principal component analysis (PCA) in the <strong>Selection</strong> section. Two criteria are decisive for suitability:
+
+1. availability of the time series over the entire period
+2. acceptable quantity and size of data gaps
+
+In addition, it is possible to decide which data groups are to be used for the PCA and whether the time series should be reduced to certain days of the week. Finally, it is possible to temporarily store the created data sets.</p>

@@ -1,10 +1,13 @@
 #' classDatabase
 #'
+#' This class has generic functions for database functionality
+#'
 #' @description Database class.
+#'
+#' @return An S4 class
 #'
 #' @noRd
 #'
-#' @export
 
 setClass("Database",
          slots = c(

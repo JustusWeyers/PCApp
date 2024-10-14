@@ -83,9 +83,26 @@ golem::add_sass_file("custom")
 ## If you have data in your package
 
 # Language
-{apptextfiles <- list.files(pattern = "\\.csv$", path = "inst/app/language/")
-apptext <- lapply(file.path("inst/app/language/", apptextfiles), \(x) read.csv(x, header = FALSE)[, 1])
-names(apptext) <- tools::file_path_sans_ext(apptextfiles)
+
+languages <- list.dirs(path = "inst/app/language/", full.names = FALSE, recursive = FALSE)
+
+apptext = lapply(languages, function(l) {
+  files = list.files(path = paste0("inst/app/language/", l))
+  unlist(lapply(files, function(f) {
+    fn = paste0("inst/app/language/", l, "/",  f)
+    if (endsWith(fn, ".csv")) {
+      w = unlist(read.csv(fn, col.names = FALSE, header = FALSE))
+      names(w) <- unlist(read.csv("inst/app/language/en/en.csv", header = FALSE))
+      return(w)
+    }
+    if (endsWith(fn, ".txt")) {
+      return(stats::setNames(readChar(fn, file.info(fn)$size), f))
+    }
+  }))
+})
+names(apptext) <- languages
+
+sampledata = read.csv("inst/app/sampledata/sampledata_weekly.csv")
 
 # Default database access values
 acc = c(
@@ -98,8 +115,8 @@ acc = c(
   dbname = "mydb"
 )
 
-internal = list("apptext" = apptext, "acc" = acc)
-usethis::use_data(internal, internal = TRUE, overwrite = TRUE)}
+internal = list("apptext" = apptext, "acc" = acc, "sampledata" = sampledata)
+usethis::use_data(internal, internal = TRUE, overwrite = TRUE)
 
 # Tests ----
 ## Add one line by test you want to create

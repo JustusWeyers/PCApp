@@ -1,0 +1,1 @@
+<p align='justify'>The <strong>Export</strong> section is used to export created data sets and graphics. A folder with corresponding subfolders can be downloaded for this purpose.</p>

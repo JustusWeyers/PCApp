@@ -1,0 +1,8 @@
+Diese Anwendung widmet sich der Analyse hydrologischer Zeitreihen mittels Hauptkomponentenanalyse (PCA). PCA stellt ein Werkzeug zur Reduktion von Datensätzen auf eine geringe Menge von relevanten Komponenten (Hauptkomponenten) und eine vergleichsweise große, aber weniger relevante Menge von Komponenten dar.
+Auf diese Weise ist es möglich, bei Fokussierung auf die Hauptkomponenten die Dimensionalität eines Datensatzes zu reduzieren.
+
+Aus diesen Hauptkomponenten ergeben sich im hydrologischen Kontext verschiedene Anwendungsmöglichkeiten, wie zum Beispiel die Berechnung und Darstellung von Komponentenladungen oder die Berechnung von sogenannten Referenzhydrographen mittels Linearer Regression.
+
+Auf der rechten Seite befindet sich ein schematisches Beispiel für die faktische Transformation von sechs Zeitreihen (links) in Hauptkomponenten (rechts). Zu beachten ist, dass der Betrag der Hauptkomponenten mit steigendem Rang abnimmt.
+
+Im Seitenmenü finden sich in absteigender Reihenfolge die einzelnen Funktionen dieser Anwendung. Unterhalb finden sich kurze Erläuterungen zu den jeweiligen Abschnitten.

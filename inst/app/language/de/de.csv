@@ -45,7 +45,7 @@ Kommentar-Zeichen
 Dateien hochladen
 Optionen für Gruppen
 Verwaltung der Gruppen
-Optionen zum Hochladen
+Tabellenoptionen
 Funktion zum Lesen von Daten auswählen
 Farbe der Gruppe
 Kopf
@@ -60,7 +60,7 @@ Startseite
 Karte
 Anwenden
 Datenbank löschen
-Ladungen
+Komponentenladungen
 Gemeinschaften
 Wesentliche Komponenten
 Allgemein
@@ -76,3 +76,25 @@ EPSG-Code
 Sprache wählen
 z.B. 25833
 CRS-Details
+Maximale Länge von Datenlücken
+Schwellwert Autocorrelation
+Klassenweite in Tagen
+Anzahl der verfügbaren Zeitreihen
+Anzahl
+Hauptkomponentenmatrix mit -1 multiplizieren
+PCA-Parameter
+Kombinationen von Hauptkomponenten
+Hauptkomponente auswählen
+Kombinationsdiagramm
+Hauptkomponenten auswählen
+Gewicht der
+Paarungen von Komponentenladungen
+Belastung auf
+Lineare Regression
+Korrelationen
+Referenz-Ganglinie
+PC auswählen
+Daten auswählen
+Eine Anwendung für Hauptkomponentenanalysen mit Zeitreihen
+Rerun
+Run

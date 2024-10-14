@@ -42,6 +42,7 @@ app_server <- function(input, output, session) {
     r$txt <- internal$apptext[[r$lang]]
   })
 
+
   # tmap settings
   # tmap::tmap_mode("plot")
 
@@ -61,7 +62,7 @@ app_server <- function(input, output, session) {
   n = 11
   shiny::withProgress(message = "Starting up", value = 0, {
     # Home server
-    mod_home_server("home")
+    mod_home_server("home", r)
     shiny::incProgress(1/n, detail = "load home module")
 
     # Database server (run first)
@@ -73,10 +74,10 @@ app_server <- function(input, output, session) {
     shiny::incProgress(1/n, detail = "load import module timeseries")
     mod_import_server("import_metadata", r, dtype = "Metadata", predefined_groups = c("Metadata"))
     shiny::incProgress(1/n, detail = "load import module metadata")
-    mod_import_server("import_vectordata", r, dtype = "VectorData", predefined_groups = c("Untersuchungsgebiet", "Einzugsgebiete"))
+    mod_import_server("import_vectordata", r, dtype = "VectorData", predefined_groups = c("Untersuchungsgebiet")) #, "Einzugsgebiete"))
     shiny::incProgress(1/n, detail = "load import module vector data")
-    mod_import_server("import_rasterdata", r, dtype = "RasterData")
-    shiny::incProgress(1/n, detail = "load import module raster data")
+    # mod_import_server("import_rasterdata", r, dtype = "RasterData")
+    # shiny::incProgress(1/n, detail = "load import module raster data")
 
     # Selection server
     mod_selection_server("select", r)
