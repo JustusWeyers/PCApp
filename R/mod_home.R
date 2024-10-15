@@ -140,12 +140,15 @@ mod_home_server <- function(id, r){
     })
 
     output$button = shiny::renderUI({
-      shiny::actionButton(inputId = ns("button"), label = r$txt[[99]])
+      shinydashboard::box(
+        solidHeader = TRUE, width = 12,
+          shiny::actionButton(inputId = ns("button"), label = r$txt[[99]])
+      )
     })
 
 
     output$subtitle = shiny::renderUI(
-      HTML(r$txt[["An application for principal component analysis with time series"]])
+      h4(r$txt[["An application for principal component analysis with time series"]])
     )
 
   })

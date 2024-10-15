@@ -10,6 +10,7 @@
 #' @importFrom shinydashboard box
 #' @importFrom zoo na.approx
 #' @importFrom DT DTOutput
+#' @import Rcpp
 
 mod_selection_ui <- function(id){
   # Namespace

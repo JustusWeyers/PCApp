@@ -1,4 +1,4 @@
-<p align='justify'>This application is dedicated to the analysis of hydrological time series using principal component analysis (PCA). PCA is a tool for reducing data sets to a small number of relevant components (principal components) and a comparatively large but less relevant number of components. In this way, it is possible to reduce the dimensionality of a data set by focusing on the main components.
+<p align='justify'><font size='3'><strong>This application is dedicated to the analysis of hydrological time series using principal component analysis (PCA). PCA is a tool for reducing data sets to a small number of relevant components (principal components) and a comparatively large but less relevant number of components. In this way, it is possible to reduce the dimensionality of a data set by focusing on the main components.</strong></font>
 
 In the hydrological context, these main components can be used for various applications, such as the calculation and display of component loadings or the calculation of so-called reference hydrographs using linear regression.
 

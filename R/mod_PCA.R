@@ -768,9 +768,9 @@ mod_PCA_server <- function(id, r){
       geo_loadings(), selection = 'single'
     )
 
-    output$ui_circle_plot = shiny::renderPlot({
-      if (is.null(circle_plot_df())) return(NULL)
-      ggplot2::ggplot() +
+
+    circle_plot = function(df) {
+      p = ggplot2::ggplot() +
         ggplot2::geom_point(
           data = circle_plot_df(),
           colour = circle_plot_df()$color,
@@ -792,6 +792,13 @@ mod_PCA_server <- function(id, r){
         ggplot2::xlab(paste(r$txt[[92]], "PC1")) +
         ggplot2::ylab(paste(r$txt[[92]], input$damping_pc)) +
         ggplot2::theme_minimal()
+      r$plots[["loads_pairs"]] = p
+      return(p)
+    }
+
+    output$ui_circle_plot = shiny::renderPlot({
+      if (is.null(circle_plot_df())) return(NULL)
+      circle_plot(circle_plot_df())
     }, height = 500, width = 500)
 
     output$ui_weight_slider = shiny::renderUI(

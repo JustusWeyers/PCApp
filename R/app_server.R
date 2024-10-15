@@ -42,6 +42,9 @@ app_server <- function(input, output, session) {
     r$txt <- internal$apptext[[r$lang]]
   })
 
+  # Plots
+  r$plots = list()
+
 
   # tmap settings
   # tmap::tmap_mode("plot")
@@ -85,6 +88,7 @@ app_server <- function(input, output, session) {
     # PCA server
     mod_PCA_server("PCA", r)
     shiny::incProgress(1/n, detail = "load PCA module")
+
     # Export server
     mod_export_server("export", r)
     shiny::incProgress(1/n, detail = "load export module")

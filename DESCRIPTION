@@ -44,6 +44,8 @@ Imports:
     utils,
     zoo
 Suggests: 
+    knitr,
+    rmarkdown,
     spelling,
     testthat (>= 3.0.0)
 LinkingTo: 
