@@ -79,8 +79,8 @@ app_server <- function(input, output, session) {
     shiny::incProgress(1/n, detail = "load import module metadata")
     mod_import_server("import_vectordata", r, dtype = "VectorData", predefined_groups = c("Untersuchungsgebiet")) #, "Einzugsgebiete"))
     shiny::incProgress(1/n, detail = "load import module vector data")
-    # mod_import_server("import_rasterdata", r, dtype = "RasterData")
-    # shiny::incProgress(1/n, detail = "load import module raster data")
+    mod_import_server("import_rasterdata", r, dtype = "RasterData")
+    shiny::incProgress(1/n, detail = "load import module raster data")
 
     # Selection server
     mod_selection_server("select", r)

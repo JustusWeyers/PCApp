@@ -92,7 +92,7 @@ mod_export_server <- function(id, r){
     ## Data
 
     output$data_header = shiny::renderUI({
-      expr = shiny::titlePanel(r$txt[["Export Data"]])
+      expr = shiny::titlePanel(r$txt[[101]])
     })
 
     output$download_data = shiny::downloadHandler(
@@ -114,19 +114,19 @@ mod_export_server <- function(id, r){
     )
 
     output$download_data_button = shiny::renderUI(
-      downloadButton(ns("download_data"), label = r$txt[["Download"]])
+      downloadButton(ns("download_data"), label = r$txt[[102]])
     )
 
     ## Images
 
     output$images_header = shiny::renderUI({
-      expr = shiny::titlePanel(r$txt[["Export Images"]])
+      expr = shiny::titlePanel(r$txt[[103]])
     })
 
     output$image_format = shiny::renderUI({
       shiny::selectInput(
         inputId = ns("img_format"),
-        label = r$txt[["Format"]],
+        label = r$txt[[106]],
         choices = c("png", "svg"),
         selected = "png",
       )
@@ -136,7 +136,7 @@ mod_export_server <- function(id, r){
       if (identical(input$img_format, "png")) {
         shiny::numericInput(
           inputId = ns("img_width"),
-          label = r$txt[["Width"]],
+          label = r$txt[[104]],
           value = 800,
           min = 100,
           max = 3000,
@@ -149,7 +149,7 @@ mod_export_server <- function(id, r){
       if (identical(input$img_format, "png")) {
         shiny::numericInput(
           inputId = ns("img_height"),
-          label = r$txt[["Height"]],
+          label = r$txt[[105]],
           value = 600,
           min = 100,
           max = 3000,
@@ -160,7 +160,7 @@ mod_export_server <- function(id, r){
 
     output$img_parameter_box = shiny::renderUI({
       shinydashboard::box(
-        width = "100%", title = r$txt[["Options"]],
+        width = "100%", title = r$txt[[36]],
         collapsed = TRUE, collapsible = TRUE,
         col_4(
           shiny::uiOutput(ns("image_format")),
@@ -193,7 +193,7 @@ mod_export_server <- function(id, r){
     )
 
     output$download_images_button = shiny::renderUI(
-      shiny::downloadButton(ns("download_images"), label = r$txt[["Download"]])
+      shiny::downloadButton(ns("download_images"), label = r$txt[[102]])
     )
 
   })

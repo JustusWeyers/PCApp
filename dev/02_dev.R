@@ -48,8 +48,6 @@ golem::add_fct("classMetadata")
 golem::add_fct("classGeospatialData")
 golem::add_fct("classVectorData")
 golem::add_fct("classRasterData")
-
-
 golem::add_utils("connect_database")
 golem::add_utils("render_sidebar")
 golem::add_utils("connect_postgres")
@@ -69,6 +67,7 @@ golem::add_utils("join_timeseries_with_metadata")
 golem::add_utils("fetch_metadata")
 golem::add_utils("read_shapefile")
 golem::add_utils("autocorrelation")
+golem::add_utils("plots")
 
 
 

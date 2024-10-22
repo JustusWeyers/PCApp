@@ -9,6 +9,7 @@ Depends:
     R (>= 2.10)
 Imports: 
     broom,
+    classwiseAcor,
     colourpicker,
     config (>= 0.3.2),
     data.table,
@@ -25,7 +26,6 @@ Imports:
     lubridate,
     methods,
     purrr,
-    Rcpp,
     rlang,
     rnaturalearth,
     RPostgres,
@@ -48,8 +48,6 @@ Suggests:
     rmarkdown,
     spelling,
     testthat (>= 3.0.0)
-LinkingTo: 
-    Rcpp
 Config/testthat/edition: 3
 Encoding: UTF-8
 Language: en-US

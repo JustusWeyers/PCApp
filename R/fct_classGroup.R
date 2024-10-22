@@ -83,7 +83,6 @@ setMethod("groupServer",
                 print("--- Get gparam ----")
                 dgt = get.table(shiny::isolate(r$db), "datagroup_table")
                 gparam = as.list(jsonlite::fromJSON(dgt[dgt$key == obj@key, "gparam"]))
-                print(gparam)
                 return(gparam)
               }
 
@@ -358,38 +357,63 @@ setMethod("groupServer",
 
               # 08. Observe read options
               observeEvent(apply_button_readoptions(), {
-                lapply(group_server$data_objects, function(o) {
-
-                  print("Data wrangling")
-
-                  fields = data_wrangling(dataobject = o, db = r$db, options = get_gparam())
-
-                  if (!is.null(fields)) {
-                    group_server$fields <- unique(c(group_server$fields, fields))
-                  }
-
-                  r$import_trigger <- !(r$import_trigger)
-
+                
+                n = length(group_server$data_objects)
+                shiny::withProgress(message = r$txt[[111]], value = 0, {
+                  
+                  lapply(group_server$data_objects, function(o) {
+                    shiny::incProgress(1/n, detail = o@name)
+                    fields = data_wrangling(dataobject = o, db = r$db, options = get_gparam())
+                    if (!is.null(fields)) {
+                      group_server$fields <- unique(c(group_server$fields, fields))
+                    }
+                    
+                  })
                 })
+                
+                r$import_trigger <- !(r$import_trigger)
+                  
+
               })
 
               # 09. Observe group options
               observeEvent(apply_button_groupoptions(), {
                 pt = get.table(shiny::isolate(r$db), "primary_table")
-                lapply(group_server$data_objects, function(o) {
-                  print("Data cleaning")
-                  indata = get.table(r$db, paste0(o@name, "_readin"))
-                  cldata = clean_data(dataobject = o, db = r$db, options = group_option_inputs())
-                  write.dbtable(r$db, paste0(o@name, "_clean"), cldata)
-                })
-                # Alternatively to many small joins one big join
+                
+                # Define number n of steps of loading bar
+                n = length(group_server$data_objects)
                 if (identical(obj@dtype, "Timeseries")) {
-                  merge.timeseries(r$db, names(group_server$data_objects))
+                  n = n + 1
                 }
-
                 if (any("Metadata" %in% pt$dtype) & any("Timeseries" %in% pt$dtype)) {
-                  r$metadata = join_timeseries_with_metadata(r$db)
+                  n = n + 1
                 }
+                
+                shiny::withProgress(message = r$txt[[108]], value = 0, {
+                  print("Group settings are implemented")
+                  lapply(group_server$data_objects, function(o) {
+                    shiny::incProgress(1/n, detail = o@name)
+                    indata = get.table(r$db, paste0(o@name, "_readin"))
+                    cldata = clean_data(dataobject = o, db = r$db, options = group_option_inputs())
+                    write.dbtable(r$db, paste0(o@name, "_clean"), cldata)
+                  })
+                  
+                  print("Premerge")
+                  print(paste("if:", identical(obj@dtype, "Timeseries")))
+                  # Mere if dtype is "Timeseries"
+                  if (identical(obj@dtype, "Timeseries")) {
+                    print("about to merge")
+                    shiny::incProgress(1/n, detail = r$txt[[109]])
+                    mgt_ts(r$db, names(group_server$data_objects))
+                    print("merge done")
+                  }
+  
+                  if (any("Metadata" %in% pt$dtype) & any("Timeseries" %in% pt$dtype)) {
+                    shiny::incProgress(1/n, detail = r$txt[[110]])
+                    r$metadata = join_timeseries_with_metadata(r$db)
+                  }
+                  
+                })
 
                 r$import_trigger <- !(r$import_trigger)
               })
@@ -464,39 +488,20 @@ setMethod("groupServer",
               })
 
 
-              ## File Input
-              output$ui_fileinput <- shiny::renderUI(
-                shiny::fileInput(
-                  # File input parameters
-                  inputId = ns(paste0(RANDOMADDRESS, "_fileinput")),
-                  label = r$txt[45],
-                  multiple = TRUE,
-                  width = "100%"
-                )
-              )
+              # ## File Input
+              # output$ui_fileinput <- shiny::renderUI(
+              # 
+              # )
 
-              ## UI method selection for reading the data
-              output$ui_readmethod <- shiny::renderUI(
-                # Select input for read method
-                shiny::selectInput(
-                  # Selection parameters
-                  inputId = ns(paste0(RANDOMADDRESS, "_readmethod")),
-                  label = r$txt[49],
-                  choices = new(group_server$obj@dtype)@readmethods,
-                  selected = get_gparam()[["readmethod"]]
-                )
-              )
+              # ## UI method selection for reading the data
+              # output$ui_readmethod <- shiny::renderUI(
+              # 
+              # )
 
-              ## Delete Button
-              output$ui_delete_button <- shiny::renderUI(
-                if (!(obj@name %in% import_server$predefined_groups)) {
-                  shiny::actionButton(
-                    # Action button parameters
-                    inputId = ns(paste0(RANDOMADDRESS, "_deletebutton")),
-                    label = r$txt[33]
-                  )
-                }
-              )
+              # ## Delete Button
+              # output$ui_delete_button <- shiny::renderUI(
+              # 
+              # )
 
               output$ui_apply_button <- shiny::renderUI(
                 shiny::actionButton(
@@ -604,23 +609,10 @@ setMethod("groupServer",
                 return(ui)
               })
 
-              ## Group options box
-              output$ui_groupoptions <- shiny::renderUI(
-                # Box with options
-                shinydashboard::box(
-                  # Box parameters
-                  id = ns(paste0(RANDOMADDRESS, "_groupoptions")),
-                  title = r$txt[46],
-                  width = 12,
-                  collapsible = TRUE,
-                  collapsed = TRUE,
-
-                  # Box content
-                  shiny::uiOutput(ns("ui_color_picker")),
-                  shiny::uiOutput(ns("ui_group_options")),
-                  col_6(shiny::uiOutput(ns("ui_apply_button")))
-                )
-              )
+              # ## Group options box
+              # output$ui_groupoptions <- shiny::renderUI(
+              # 
+              # )
 
               ## Upload options box
               output$ui_readoptions <- shiny::renderUI(
@@ -640,7 +632,7 @@ setMethod("groupServer",
               )
 
               ## Input Box
-              output$ui_inputBox <- shiny::renderUI(
+              output$ui_inputBox <- shiny::renderUI({
                 shinydashboard::box(
                   # Box parameters
                   id = ns("box2"),
@@ -650,26 +642,69 @@ setMethod("groupServer",
                   # Box content
                   shiny::fluidRow(
                     col_6(
-                      #style = "margin-top: 25px;",
-                      shiny::uiOutput(ns("ui_fileinput"))
+                      shiny::fileInput(
+                        # File input parameters
+                        inputId = ns(paste0(RANDOMADDRESS, "_fileinput")),
+                        label = r$txt[45],
+                        multiple = TRUE,
+                        width = "100%"
+                      )
                     ),
                     col_6(
-                      shiny::uiOutput(ns("ui_readmethod"))
+                      # Select input for read method
+                      shiny::selectInput(
+                        # Selection parameters
+                        inputId = ns(paste0(RANDOMADDRESS, "_readmethod")),
+                        label = r$txt[49],
+                        choices = new(group_server$obj@dtype)@readmethods,
+                        selected = get_gparam()[["readmethod"]]
+                      )
                     )
                   ),
                   shiny::fluidRow(
                     col_4(
-                      shiny::uiOutput(ns("ui_readoptions"))
+                      # Box with options
+                      shinydashboard::box(
+                        # Box parameters
+                        id = ns(paste0(RANDOMADDRESS, "_uploadoptions")),
+                        title = r$txt[48],
+                        width = 12,
+                        collapsible = TRUE,
+                        collapsed = TRUE,
+                        
+                        # Box content
+                        shiny::uiOutput(ns("ui_read_parameter")),
+                        shiny::uiOutput(ns("ui_apply_button_read"))
+                      )
                     ),
                     col_4(
-                      shiny::uiOutput(ns("ui_groupoptions"))
+                      # Box with options
+                      shinydashboard::box(
+                        # Box parameters
+                        id = ns(paste0(RANDOMADDRESS, "_groupoptions")),
+                        title = r$txt[46],
+                        width = 12,
+                        collapsible = TRUE,
+                        collapsed = TRUE,
+                        
+                        # Box content
+                        shiny::uiOutput(ns("ui_color_picker")),
+                        shiny::uiOutput(ns("ui_group_options")),
+                        col_6(shiny::uiOutput(ns("ui_apply_button")))
+                      )
                     ),
                     col_4(
-                      shiny::uiOutput(ns("ui_delete_button"))
+                      if (!(obj@name %in% import_server$predefined_groups)) {
+                        shiny::actionButton(
+                          # Action button parameters
+                          inputId = ns(paste0(RANDOMADDRESS, "_deletebutton")),
+                          label = r$txt[33]
+                        )
+                      }
                     )
                   )
                 )
-              )
+              })
 
               # Main box
               output$ui_groupbox <- shiny::renderUI(

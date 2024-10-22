@@ -6,6 +6,7 @@
 .quarto
 /inst/extdata/*.sqlite
 *.env
-shinyproxy-3.0.2.jar
+shinyproxy-3.1.1.jar
 application.properties
 shinyproxy.log*
+PCApp_0.0.1.tar.gz

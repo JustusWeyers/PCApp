@@ -10,7 +10,7 @@
 #' @importFrom shinydashboard box
 #' @importFrom zoo na.approx
 #' @importFrom DT DTOutput
-#' @import Rcpp
+# #' @import Rcpp
 
 mod_selection_ui <- function(id){
   # Namespace
@@ -76,7 +76,7 @@ mod_selection_ui <- function(id){
             shiny::uiOutput(ns("ui_daterange_input"))
           ),
           col_10(
-            shiny::plotOutput(ns("proportion_plot"), height = 200)
+            shiny::plotOutput(ns("proportion_plot_crit1"), height = 200)
           )
         )
       ),
@@ -103,16 +103,16 @@ mod_selection_ui <- function(id){
         width = "100%", solidHeader = TRUE,
         shiny::fluidRow(
           col_2(
-            shiny::uiOutput(ns("ui_alpha_slider")),
             shiny::uiOutput(ns("ui_dtclass_input")),
-            shiny::uiOutput(ns("ui_acor_button"))
+            shiny::uiOutput(ns("ui_alpha_slider")),
+            # shiny::uiOutput(ns("ui_acor_button"))
           ),
           col_10(
-            DT::DTOutput(ns("gapdf"))
+            shiny::uiOutput(ns("ui_acor_tabbox"))
           )
         )
       ),
-
+      
       # Save selection
 
       ## The last section serves to store the selected data in the database in
@@ -134,7 +134,6 @@ mod_selection_ui <- function(id){
           )
         )
       )
-
     )
   )
 }
@@ -262,66 +261,63 @@ mod_selection_server <- function(id, r){
     ## non-periodical data. Depends on the accepted groups and names as well
     ## as on user inputs for accepted autocorrelationlevel and class with in
     ## days. Also depends on selection_server$timeseries_table$timestamp.
+    
+    dt = shiny::reactive(
+      input$dtclass_input
+    )
+    
+    classes = shiny::reactive({
+      if (is.null(dt())) return(NULL)
+      dates = as.numeric(as.Date(selection_server$timeseries_table$timestamp))
+      return(c(1, seq(dt()/2, to = floor(0.25 * diff(range(dates))), by = dt())))
+    })
+    
+    
     gaps = shiny::reactive({
-
       # Preconditions
-      is_null_names = is.null(groups_and_names())
-      is_null_input1 = is.null(input$alpha_slider)
-      is_null_input2 = is.null(input$dtclass_input)
-      if (any(c(is_null_names, is_null_input1, is_null_input2))) return(NULL)
-
+      if (any(is.null(c(groups_and_names(), dt(), classes())))) return(NULL)
       # Set up a result data.frame. It contains a column with names of the
       # accepted timeseries and a yet empty column of maximum gap
       dat = data.frame(# data.table::data.table(
         id = colnames(nafree())[colnames(nafree()) != "timestamp"],
-        maxgap = NA,
-        maxcor = NA
+        maxgap = NA
       )
-
-      # User defined level of autocorrelation
-      alpha = input$alpha_slider
-
-      # User defined class width
-      dt = input$dtclass_input
-
+      
       # Check if userinputs are ok
-      if (is.na(dt) | dt <= 1 | (dt %% 2) != 0) {
+      if (is.na(dt()) | dt() <= 1 | (dt() %% 2) != 0) {
+        print("gaps: failed preconditions")
         # Prematurely return result data.table
         return(dat)
       }
-
-      # Retrieve dates from timeseries_table and turn them into numeric
-      dates = as.numeric(as.Date(selection_server$timeseries_table$timestamp))
-      # Define classes based on the dates
-      classes = c(1, seq(dt/2, to = floor(0.25 * diff(range(dates))), by = dt))
-
+      
       # Paste some classnames for the result of autocorrelation calculation
-      class_names = paste0(classes[-length(classes)], "...", (classes[-1]-1))
-      # Set up a empty data.table (column names starting with numbers)
-      corr = data.frame( #data.table::data.table(
+      class_names = paste0(
+        "dt", 
+        classes()[-length(classes())], 
+        "...", 
+        (classes()[-1]-1)
+      )
+      # Set up a empty data.frame
+      corr = data.frame(
         matrix(ncol = length(class_names), nrow = nrow(dat))
       )
-      # Give the data.table the 'class_names' as column names
-      colnames(corr) = paste0("dt", class_names)
+      # Give the data.frame the 'class_names' as column names
+      colnames(corr) = class_names
 
       # Iterate over names in dat names-column and calculate the level of
       # autocorrelation for each class. Framed by a shiny progress bar.
-      shiny::withProgress(message = 'Calculating Autocorrelation', value = 0, {
+      shiny::withProgress(message = 'Calculating autocorrelation', value = 0, {
         for (i in 1:nrow(dat)) {
           # Fetch station time series from db
           data = get.table(r$db, paste0(dat[i,"id"], "_clean"))
           # Turn timestamp column into Date
           data$timestamp = as.Date(data$timestamp)
+          # Crop to investigation period 
+          data = data[lubridate::`%within%`(data$timestamp, period_of_investigation()),]
           # Calculate Autocorrelation via R/utils_autocorrelation.R
-          acordf = acor(data = data, classes = classes, alpha = alpha)
-          # print("Combine")
-          # print(acordf)
-          # print(corr)
-          # print(1:nrow(acordf))
+          acordf = classwiseAcor::acor(data = data, dt = dt(), method = "cpp")
           # Fill correlation data into corr data.table
           corr[i,1:nrow(acordf)] = acordf$Autocorrelation
-
-          dat$maxcor[i] = classes[nrow(acordf)]-1
 
           # Data.frame containing date and difference to next date columns
           gapdf = data.frame(
@@ -341,7 +337,9 @@ mod_selection_server <- function(id, r){
           } else {
             dat$maxgap[i] = 0
           }
-
+          
+          dat$maxgap[is.na(dat$maxgap)] = 0
+          
           # Increase loading bar
           shiny::incProgress(1/nrow(dat), detail = paste("Station", dat$id[i]))
 
@@ -352,7 +350,7 @@ mod_selection_server <- function(id, r){
       corr = corr[,colSums(is.na(corr)) < nrow(corr)]
       # Combine dat and corr data.tables
       dat = data.table::data.table(cbind(dat, corr))
-
+      
       # Return result data.table
       return(dat)
     })
@@ -363,7 +361,7 @@ mod_selection_server <- function(id, r){
     ## column names for each group. The list is going to be displayed in a tab-
     ## box in the first section.
     data_list = shiny::reactive({
-      l = lapply(unlist(groups_and_names()), function(nms) {
+      l = lapply(unname(unlist(groups_and_names())), function(nms) {
         selection_server$timeseries_table[,c("timestamp", nms)]
       })
       l = stats::setNames(l, names(groups_and_names()))
@@ -529,12 +527,21 @@ mod_selection_server <- function(id, r){
     ##
     ##
     ##
-    conform = reactive({
-      if (ncol(selection_server$gaps)>0) {
-        ok_ids = gaps()$id[gaps()$maxgap < gaps()$maxcor]
-        conform = nafree()[,c("timestamp", intersect(colnames(nafree()), ok_ids))]
-        return(conform)
-      }
+    conform = shiny::reactive({
+      if (is.null(gaps()) | is.null(nafree())) return(NULL)
+      print("Conform function")
+      
+      gps = gaps()
+      gap_values = gps[,3:ncol(gps)]
+      gap_values = gap_values >= input$alpha_slider
+      
+      nth_class = apply(X = gap_values, MARGIN = 1, FUN = sum, na.rm = TRUE)
+      gps$maxcor = classes()[nth_class+1]-1
+      
+      ok_ids = gps$id[gps$maxgap < gps$maxcor]
+      conform = dplyr::select(nafree(), c("timestamp", ok_ids))
+      
+      return(conform)
     })
 
     # 3. Reactive values initialization
@@ -549,7 +556,6 @@ mod_selection_server <- function(id, r){
       timeseries_table = get.table(shiny::isolate(r$db), "timeseries_table"),
       primary_table = get.table(shiny::isolate(r$db), "primary_table"),
       datagroup_table = get.table(shiny::isolate(r$db), "datagroup_table"),
-      gaps = data.frame()
     )
 
     # 4. Server logic via observers
@@ -576,22 +582,6 @@ mod_selection_server <- function(id, r){
       }
     )
 
-    # ## Observe if new metadata are available from reactive values and
-    # ## eventually add these to global reactive values.
-    # shiny::observeEvent(
-    #   eventExpr = selected_metadata(),
-    #   handlerExpr = {
-    #     r$metadata = selected_metadata()
-    #   }
-    # )
-
-    shiny::observeEvent(
-      eventExpr = input$calc_autocor,
-      handlerExpr = {
-        selection_server$gaps = gaps()
-      }
-    )
-
     ## Observe the cache button. If pressed write sparam to database, as well as
     ## the table with the prepared data from conform() reactive function. Change
     ## cache_selection_trigger in order to update the analysos module.
@@ -605,10 +595,6 @@ mod_selection_server <- function(id, r){
           df = data.frame(sparam = sparam_string)
           # Write the data.frame to batabase
           write.dbtable(r$db, "selection_table", df)
-        }
-
-        if (is.null(conform())) {
-          selection_server$gaps = gaps()
         }
 
         # Save selected data
@@ -672,7 +658,7 @@ mod_selection_server <- function(id, r){
     ## A ggplot showing the amount of available timeseries over the period
     ## of investigation. Depends on the nafree(), the color() and the
     ## groups_and_names() reactive functions.
-    output$proportion_plot = shiny::renderPlot(
+    output$proportion_plot_crit1 = shiny::renderPlot(
       expr = {
         # Preconditions
         if (!(length(selected_groups()) > 0) | is.null(colors())) return(NULL)
@@ -688,40 +674,49 @@ mod_selection_server <- function(id, r){
         )
         # Merge color information into the data.frame by group name
         plotdf = merge(plotdf, colors(), by = "group")
-
-        # Create ggplot p
-        p = ggplot2::ggplot(
-          # Use The 'plotdf' data.frame
-          data=plotdf,
-          # Define the aesthetics
-          ggplot2::aes(x=group, y = occurences, fill = color)) +
-          # Create bar plot
-          ggplot2::geom_bar(stat="identity") +
-          # Fill bars with group colors
-          ggplot2::scale_fill_manual(values = rev(plotdf$color)) +
-          # Add A Title
-          ggplot2::ggtitle(r$txt[[82]]) +
-          # Add a
-          ggplot2::ylab(r$txt[[83]]) +
-          # Make bar chart horizontal
-          ggplot2::coord_flip() +
-          # Set theme minimal
-          ggplot2::theme_minimal() +
-          # Some more settings regarding the theme
-          ggplot2::theme(
-            # Make title font bold
-            plot.title = ggplot2::element_text(face="bold", size = 15),
-            # Remove y axis title
-            axis.title.y = ggplot2::element_blank(),
-            # Place title on left margin
-            plot.title.position = "plot",
-            # Remove legend
-            legend.position = "none"
-          )
+        
+        plotdf2 = data.frame(
+          group = plotdf$group,
+          occurences = purrr::map_vec(groups_and_names()[plotdf$group], length),
+          color = paste0(plotdf$color, "55")
+        )
+        
         # Return the plot
-        return(p)
+        return(avaliable_ts(plotdf, plotdf2, r$txt))
       }
     )
+    
+    
+    output$proportion_plot_crit2 = shiny::renderPlot(
+      expr = {
+        if (!(length(selected_groups()) > 0) | is.null(colors())) return(NULL)
+        
+        l = lapply(
+          X = groups_and_names(),
+          FUN = function(nms) length(nms[nms %in% colnames(conform())])
+        )
+        
+        df1 = data.frame(
+          group = names(groups_and_names()),
+          occurences = unname(unlist(l))
+        )
+        
+        df1 = merge(df1, colors(), by = "group")
+        
+        df2 = data.frame(
+          group = df1$group,
+          occurences = purrr::map_vec(groups_and_names()[df1$group], length),
+          color = paste0(df1$color, "55")
+        )
+        
+        return(avaliable_ts(df1, df2, r$txt))
+
+      }
+    )
+    
+    output$p_over_alpha = shiny::renderPlot({
+      alpha_plot(gaps(), input$alpha_slider, classes())
+    })
 
     ## Render title for the maximum gap length section.
     output$ui_header3 = shiny::renderUI(
@@ -774,17 +769,31 @@ mod_selection_server <- function(id, r){
       )
     )
 
-    output$ui_acor_button = renderUI(
-      expr = shiny::actionButton(
-        inputId = ns("calc_autocor"),
-        label =  r$txt[[100]]
-      )
+    # output$ui_acor_button = renderUI(
+    #   expr = shiny::actionButton(
+    #     inputId = ns("calc_autocor"),
+    #     label =  r$txt[[100]],
+    #     width = "100%"
+    #   )
+    # )
+    
+    output$ui_acor_tabbox = shiny::renderUI(
+      expr = {
+        shinydashboard::tabBox(
+          width = "100%",
+          shiny::tabPanel(r$txt["Accepted timeseries by groups"], shiny::plotOutput(ns("proportion_plot_crit2"), height = 200)),
+          shiny::tabPanel(r$txt["Accepted timeseries over alpha"], shiny::plotOutput(ns("p_over_alpha"), height = 200)),
+          shiny::tabPanel(r$txt["Autocorrelation table"], DT::DTOutput(ns("gapdf")))
+        )
+      }
     )
 
+
+    
     ## Render the table in the third section representing the data.frame with
     ## information about maximum gap length and levels of autocorrelation.
     output$gapdf = DT::renderDataTable(
-      expr = selection_server$gaps, options = list(scrollX = TRUE)
+      expr = gaps(), options = list(scrollX = TRUE)
     )
 
     ## Render title for the cache section.
@@ -796,7 +805,10 @@ mod_selection_server <- function(id, r){
     output$cachebutton = shiny::renderUI(
       expr = shiny::actionButton(
         inputId = ns("cache_selection_button"),
-        label = r$txt[[72]])
+        label = r$txt[[72]],
+        width = "100%"
+        )
+      
     )
 
   })

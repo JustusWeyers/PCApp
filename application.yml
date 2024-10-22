@@ -7,16 +7,19 @@ proxy:
   favicon-path: favicon.ico
   heartbeat-rate: 10000
   heartbeat-timeout: 60000
-  port: ${PORT:-8080}
+  port: 8080 # ${PORT:-8080}
   authentication: simple
   admin-groups: admins
   # Example: 'simple' authentication configuration
   users:
-    - name: ${USER1NAME}
-      password: ${USER1PASSWORD}
-      groups: [ admins, user ]
-    - name: ${USER2NAME}
-      password: ${USER2PASSWORD}
+    # - name: ${USER1NAME}
+    #   password: ${USER1PASSWORD}
+    #   groups: [ admins, user ]
+    # - name: ${USER2NAME}
+    #   password: ${USER2PASSWORD}
+    #   groups: [ user ]
+    - name: user
+      password: mysecretpassword
       groups: [ user ]
   # Docker configuration
   docker:

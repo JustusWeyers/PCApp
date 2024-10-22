@@ -309,7 +309,7 @@ setMethod("clear.db",
             }
           })
 
-setMethod("merge.timeseries",
+setMethod("mgt_ts",
           methods::signature(d = "SQLite"),
           function (d, names) {
 

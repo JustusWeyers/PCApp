@@ -4,6 +4,8 @@
 #'
 #' @return The return value, if any, from executing the utility.
 #'
+#' @importFrom classwiseAcor acor_pairs
+#'
 #' @noRd
 
 acor = function(data, classes, alpha) {
@@ -25,15 +27,15 @@ acor = function(data, classes, alpha) {
   # Loop over rows in result data.frame
   for (i in 1:nrow(acf)) {
     # Calculate pairs via Rcpp function
-    pairs = pairs_cpp(data = data, FromTo = c(acf[i,1], acf[i,2]))
+    # pairs = pairs_cpp(data = data, FromTo = c(acf[i,1], acf[i,2]))
+    pairs = classwiseAcor::acor_pairs(data = data, FromTo = c(acf[i,1], acf[i,2]))
     # Calculate correlation coefficient
     acf[i,3] = cor(pairs)[1,2]
     # Count number of instances
     acf[i,4] = nrow(pairs)
     # If correlationcoefficient is smaller than alpha end loop
-    if (acf[i,3] < alpha) break
+    if (acf[i,3] < 0.1) break
   }
-
 
   # Return NA-free result table
   return(na.omit(acf))

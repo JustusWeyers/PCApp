@@ -26,7 +26,7 @@ Zeitreihen
 Metadaten
 Shape-Dateien
 Rasterdateien
-importieren
+Importieren
 Exportieren
 Schemata
 Löschen
@@ -45,7 +45,7 @@ Kommentar-Zeichen
 Dateien hochladen
 Optionen für Gruppen
 Verwaltung der Gruppen
-Tabellenoptionen
+Einleseoptionen
 Funktion zum Lesen von Daten auswählen
 Farbe der Gruppe
 Kopf
@@ -77,7 +77,7 @@ Sprache wählen
 z.B. 25833
 CRS-Details
 Maximale Länge von Datenlücken
-Schwellwert Autocorrelation
+Minimales Autokorrelationslevel (alpha)
 Klassenweite in Tagen
 Anzahl der verfügbaren Zeitreihen
 Anzahl
@@ -105,3 +105,10 @@ Breite
 Höhe
 Format
 Parameter
+Gruppeneinstellungen werden implementiert
+Zeitreihen werden zusammengeführt (kann einige Zeit dauern)
+Zeitreihen und Metadaten werden verknüpft
+Importierte Daten werden gelesen
+Akzeptierte Zeitreihen nach Gruppen
+Akzeptierte Zeitreihen über alpha
+Autokorrelations Tablelle

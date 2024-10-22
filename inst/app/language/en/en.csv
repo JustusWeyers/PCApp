@@ -45,7 +45,7 @@ Comment character
 Upload files
 Group options
 Group management
-Table options
+Read options
 Select function to read data
 Group color
 Head
@@ -77,7 +77,7 @@ Choose language
 e.g. 25833
 CRS Details
 Maximum length of data gaps
-Level of autocorrelation
+Minimum level of autocorrelation (alpha)
 Class width in days
 Number of available timeseries
 Number
@@ -105,3 +105,10 @@ Width
 Height
 Format
 Parameter
+Group settings are implemented
+Merging timeseries (might take some time)
+Joining timeseries and metadata
+Reading imported data
+Accepted timeseries by groups
+Accepted timeseries over alpha
+Autocorrelation table

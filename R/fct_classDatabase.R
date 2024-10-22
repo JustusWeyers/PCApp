@@ -136,4 +136,5 @@ setGeneric("replace.by.primary_key", function(d, table, key, values) standardGen
 
 setGeneric("clear.db", function(d) standardGeneric("clear.db"))
 
-setGeneric("merge.timeseries", function(d, names) standardGeneric("merge.timeseries"))
+# "Merge timeseries"
+setGeneric("mgt_ts", function(d, names) standardGeneric("mgt_ts"))

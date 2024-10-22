@@ -365,7 +365,7 @@ setMethod("clear.db",
             DBI::dbExecute(d@con, sql)
           })
 
-setMethod("merge.timeseries",
+setMethod("mgt_ts",
           methods::signature(d = "PostgreSQL"),
           function (d, names) {
 
@@ -385,6 +385,9 @@ setMethod("merge.timeseries",
             # Remove rows with only NA
             df <- df[!apply(df, FUN = function(x) all(is.na(x[2:length(x)])), MARGIN = 1),]
 
+            # Sort by timestamp
+            df = df[order(df$timestamp),]
+            
             # Write to database
             write.dbtable(d, "timeseries_table", df)
             print("done")

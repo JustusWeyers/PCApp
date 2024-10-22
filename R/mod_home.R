@@ -90,7 +90,7 @@ mod_home_server <- function(id, r){
       pc = pca$x
       cl = data.frame(pca$rotation %*% diag(sqrt(eigen(stats::cov(home_server$data[,2:7]))$values)))
       if (median(cl[,1]) < 0) {
-        pc[,1] = pc[,1] * (-1)
+        pc = pc * (-1)
       }
       return(demoplot_pc(as.Date(home_server$data$timestamp), pc))
     })
