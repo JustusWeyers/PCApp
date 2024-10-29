@@ -70,7 +70,7 @@ mod_database_server <- function(id, r) {
     # Reactive functions
 
     ## Initial connection routine
-    init_connect = reactive({
+    init_connect = shiny::reactive({
       # By default test postgres connection
       tryCatch(
          expr = {
@@ -110,7 +110,7 @@ mod_database_server <- function(id, r) {
     })
 
     ## Ordinary database connection routine via try catch
-    connect = reactive({
+    connect = shiny::reactive({
       # If input$dbtype is PostgreSQL
       if (input$dbtype == "RPostgres") {
         tryCatch({
@@ -133,7 +133,7 @@ mod_database_server <- function(id, r) {
     })
 
     ## Fetch credentials from environment
-    credentials = reactive({
+    credentials = shiny::reactive({
       # Eventually fetch user defined credentials. Therefore the corresponding
       # UI elements have to be rendered. This is especially at the initial
       # attempt to conect to the database the case.
@@ -144,7 +144,7 @@ mod_database_server <- function(id, r) {
       if (ui_check) {
         cred = c(
           host = input$host,
-          user = input$user,
+          user = tolower(input$user),
           password = input$password,
           port = input$port,
           dbname = input$dbname
@@ -167,15 +167,15 @@ mod_database_server <- function(id, r) {
         # be the environmental variable SHINYPROXY_USERNAME or USERNAME. This
         # depends on the environment the application is launched in.
         if ("SHINYPROXY_USERNAME" %in% names(r$ENV)) {
-          cred["user"] <- getElement(
+          cred["user"] <- tolower(getElement(
             object = r$ENV,
             name = "SHINYPROXY_USERNAME"
-          )
+          ))
         } else if ("USERNAME" %in% names(r$ENV)) {
-          cred["user"] <- getElement(
+          cred["user"] <- tolower(getElement(
             object = r$ENV,
             name = "USERNAME"
-          )
+          ))
         }
         # Check if alternatively password is available from env. The name
         # of the environmental password variable depends on the cred user.
@@ -301,21 +301,9 @@ mod_database_server <- function(id, r) {
         value = getElement(credentials(), "dbname")
       )
     )
-
-    # Connection tabbox
-    output$ui_connection_box <- shiny::renderUI(
-      expr = shinydashboard::tabBox(
-        # TabBox parameters
-        id = ns("connection_tabbox"),
-        title = "",
-        width = "100%",
-        # TabBox panel 1
-        shiny::tabPanel(
-          # TabPanel parameters
-          title = r$txt[22],
-          # TabPanel content
-          shiny::uiOutput(ns("ui_dbtype_radiobutton"))
-        ),
+    
+    postgres_connection_panel = shiny::reactive({
+      if (r$admin) {
         # TabBox panel 2
         shiny::tabPanel(
           # TabPanel parameters
@@ -336,6 +324,26 @@ mod_database_server <- function(id, r) {
             )
           )
         )
+      } else {
+        return(NULL)
+      }
+    })
+
+    # Connection tabbox
+    output$ui_connection_box <- shiny::renderUI(
+      expr = shinydashboard::tabBox(
+        # TabBox parameters
+        id = ns("connection_tabbox"),
+        title = "",
+        width = "100%",
+        # TabBox panel 1
+        shiny::tabPanel(
+          # TabPanel parameters
+          title = r$txt[22],
+          # TabPanel content
+          shiny::uiOutput(ns("ui_dbtype_radiobutton"))
+        ),
+
       )
     )
 
@@ -356,10 +364,13 @@ mod_database_server <- function(id, r) {
 
     # Header 2
     output$ui_header2 <- shiny::renderUI(
-      expr = shiny::titlePanel(
-        # TitlePanel parameters
-        title = r$txt[19]
-      )
+      expr = {
+        if (r$admin) {
+          shiny::titlePanel(title = r$txt[19])
+        } else {
+          return(NULL)
+        }
+      }
     )
 
     # Table of database users
@@ -400,34 +411,42 @@ mod_database_server <- function(id, r) {
 
     # Tabbox for database properties
     output$ui_properties_tabbox <- shiny::renderUI(
-      expr = shinydashboard::tabBox(
-        # TabBox parameters
-        id = ns("properties_tabbox"),
-        title = "",
-        width = "100%",
-        # TabBox panel 1
-        shiny::tabPanel(
-          # TabPanel parameters
-          title = r$txt[21],
-          # TabPanel content
-          shiny::uiOutput(ns("ui_users"))
-        ),
-        # TabBox panel 2
-        shiny::tabPanel(
-          # TabPanel parameters
-          title = r$txt[23],
-          # TabPanel content
-          shiny::uiOutput(ns("ui_tables"))
-        ),
-        # TabBox panel 3
-        shiny::tabPanel(
-          # TabPanel parameters
-          title = r$txt[31],
-          # TabPanel content
-          shiny::textOutput(ns("ui_schemas")),
-          shiny::textOutput(ns("ui_searchpath"))
-        )
-      )
+      expr = {
+        
+        if (r$admin) {
+          shinydashboard::tabBox(
+            # TabBox parameters
+            id = ns("properties_tabbox"),
+            title = "",
+            width = "100%",
+            # TabBox panel 1
+            shiny::tabPanel(
+              # TabPanel parameters
+              title = r$txt[21],
+              # TabPanel content
+              shiny::uiOutput(ns("ui_users"))
+            ),
+            # TabBox panel 2
+            shiny::tabPanel(
+              # TabPanel parameters
+              title = r$txt[23],
+              # TabPanel content
+              shiny::uiOutput(ns("ui_tables"))
+            ),
+            # TabBox panel 3
+            shiny::tabPanel(
+              # TabPanel parameters
+              title = r$txt[31],
+              # TabPanel content
+              shiny::textOutput(ns("ui_schemas")),
+              shiny::textOutput(ns("ui_searchpath"))
+            )
+          )
+        } else {
+          return(NULL)
+        }
+        
+      }
     )
 
     # Header 3
@@ -439,8 +458,12 @@ mod_database_server <- function(id, r) {
       shiny::actionButton(
         inputId = ns("clear_button"),
         label = r$txt[[62]],
-        style="color: #fff; background-color: #db3a2e; border-color: #c23329"  #db291d"
+        style="color: #fff; background-color: #db3a2e; border-color: #c23329"
       )
+    })
+    
+    admin = shiny::reactive({
+      
     })
 
   })

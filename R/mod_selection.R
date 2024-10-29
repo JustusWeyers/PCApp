@@ -159,6 +159,7 @@ mod_selection_ui <- function(id){
 #' @importFrom DT renderDataTable
 #' @importFrom dplyr select everything select_if
 #' @importFrom lubridate `%within%` interval
+#' @importFrom classwiseAcor acor
 
 mod_selection_server <- function(id, r){
   shiny::moduleServer(id, function(input, output, session){
@@ -410,9 +411,9 @@ mod_selection_server <- function(id, r){
     ## Create subset of the datagroup_table. The table becomes filtered to
     ## contain only timeseries data. Returns a data.frame with key, name, dtype
     ## and gparam columns
-    groups = shiny::reactive(
+    groups = shiny::reactive({
       subset(selection_server$datagroup_table, dtype == "Timeseries")
-    )
+    })
 
     ## 2. selected_groups() reactive function
 
@@ -559,6 +560,16 @@ mod_selection_server <- function(id, r){
     )
 
     # 4. Server logic via observers
+    
+    shiny::observeEvent(
+      eventExpr = r$db,
+      handlerExpr = {
+        selection_server$sparam = get_sparam(r$db)
+        selection_server$timeseries_table = get.table(r$db, "timeseries_table")
+        selection_server$primary_table = get.table(r$db, "primary_table")
+        selection_server$datagroup_table = get.table(r$db, "datagroup_table")
+    })
+    
 
     ## When something in the imports module changes, the primary_table, the
     ## datagroup_table and the timeseries_table become updated.

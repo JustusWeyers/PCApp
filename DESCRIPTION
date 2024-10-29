@@ -8,7 +8,6 @@ License: MIT + file LICENSE
 Depends: 
     R (>= 2.10)
 Imports: 
-    broom,
     classwiseAcor,
     colourpicker,
     config (>= 0.3.2),
@@ -27,10 +26,8 @@ Imports:
     methods,
     purrr,
     rlang,
-    rnaturalearth,
     RPostgres,
     RSQLite,
-    scales,
     sf,
     shiny (>= 1.8.0),
     shinydashboard,
@@ -38,14 +35,10 @@ Imports:
     stats,
     stringi,
     stringr,
-    tibble,
-    tidyr,
     tools,
     utils,
     zoo
 Suggests: 
-    knitr,
-    rmarkdown,
     spelling,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

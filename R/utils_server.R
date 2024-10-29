@@ -1,3 +1,18 @@
+#' create_dir
+#'
+#' @description A utils function to create a directory at given path
+#'
+#' @return return the input path
+#'
+#' @noRd
+
+create_dir <- function(path) {
+  if (!dir.exists(path)) {
+    dir.create(path, showWarnings = FALSE)
+  }
+  return(path)
+}
+
 #' setdifflist
 #'
 #' @description A utils function
@@ -16,11 +31,3 @@ setdifflist = function(Lobs, Lexp) {
     return(NULL)
   }
 }
-
-# if (is.character(c) & !is.na(suppressWarnings(as.numeric(c)))) {
-#   # Convert to numeric
-#   change[1] <- suppressWarnings(as.numeric(c))
-#   return(change)
-# } else {
-#   return(change)
-# }

@@ -7,7 +7,6 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-#' @importFrom rnaturalearth ne_countries
 
 mod_general_ui <- function(id){
   ns <- NS(id)
@@ -151,12 +150,11 @@ mod_general_server <- function(id, r){
     )
 
     output$crs_plot <- shiny::renderPlot({
-      world = rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
-      p = ggplot2::ggplot(world) +
+      p = ggplot2::ggplot(internal$world) +
         ggplot2::geom_sf() +
         ggplot2::theme_bw()
       if (!is.null(bbox_shp())) {
-        p = p + ggplot2::geom_sf(data = sf::st_transform(bbox_shp(), sf::st_crs(world)),
+        p = p + ggplot2::geom_sf(data = sf::st_transform(bbox_shp(), sf::st_crs(internal$world)),
                                  color = "red", fill = "transparent", linewidth = 1)
       }
       return(p)

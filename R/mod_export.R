@@ -58,7 +58,7 @@ mod_export_ui <- function(id){
       shinydashboard::box(
         width = "100%", solidHeader = TRUE,
         shiny::fluidRow(
-          col_6(
+          col_8(
             col_4(
               shiny::uiOutput(ns("download_images_button"))
             ),
@@ -131,13 +131,24 @@ mod_export_server <- function(id, r){
         selected = "png",
       )
     })
+    
+    output$image_unit = shiny::renderUI({
+      if (identical(input$img_format, "png")) {
+        shiny::selectInput(
+          inputId = ns("img_unit"),
+          label = r$txt[[120]],
+          choices = c("in", "cm", "mm", "px"),
+          selected = "px",
+        )
+      }
+    })
 
     output$image_width = shiny::renderUI({
       if (identical(input$img_format, "png")) {
         shiny::numericInput(
           inputId = ns("img_width"),
           label = r$txt[[104]],
-          value = 800,
+          value = 1920,,
           min = 100,
           max = 3000,
           step = 1
@@ -150,7 +161,7 @@ mod_export_server <- function(id, r){
         shiny::numericInput(
           inputId = ns("img_height"),
           label = r$txt[[105]],
-          value = 600,
+          value = 1200,
           min = 100,
           max = 3000,
           step = 1
@@ -162,32 +173,52 @@ mod_export_server <- function(id, r){
       shinydashboard::box(
         width = "100%", title = r$txt[[36]],
         collapsed = TRUE, collapsible = TRUE,
-        col_4(
+        col_3(
           shiny::uiOutput(ns("image_format")),
         ),
-        col_4(
+        col_3(
+          shiny::uiOutput(ns("image_unit")),
+        ),
+        col_3(
           shiny::uiOutput(ns("image_width")),
         ),
-        col_4(
+        col_3(
           shiny::uiOutput(ns("image_height"))
         )
       )
     })
+    
+    # Download 
 
     output$download_images = shiny::downloadHandler(
       filename = function() {
         paste("output", "zip", sep=".")
       },
       content = function(fname) {
-        fs <- c()
-        tmpdir <- tempdir()
-        setwd(tempdir())
-        for (i in c(1,2,3,4,5)) {
-          path <- paste0("sample_", i, ".csv")
-          fs <- c(fs, path)
-          write(i*2, path)
-        }
-        zip(zipfile=fname, files=fs)
+        tryCatch({
+          fs <- c()
+          tmpdir <- tempdir()
+          setwd(tempdir())
+          for (i in 1:length(r$plots)) {
+            if (is.null(input$img_format)) {
+              f = "png"
+            } else {
+              f = input$img_format
+            }
+            path <- paste0(names(r$plots)[[i]], ".", f)
+            fs <- c(fs, path)
+            w = NA
+            h = NA
+            u = c("in", "cm", "mm", "px")
+            if (!is.null(input$img_width) & identical(input$img_format, "png")) {
+              w = input$img_width 
+              h = input$img_height
+              u = input$img_unit
+            }
+            ggplot2::ggsave(path, plot = r$plots[[i]], width = w, height = h, units = u)
+          }
+          zip(zipfile=fname, files=fs)
+        }, error = function(e) print(e))
       },
       contentType = "application/zip"
     )

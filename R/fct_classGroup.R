@@ -65,7 +65,7 @@ setMethod("groupServer",
           definition = function(obj, r, import_server) {
             server <- shiny::moduleServer(obj@name, function(input, output, session) {
               ns <- session$ns
-
+              
               ####
 
               ##################
@@ -80,7 +80,6 @@ setMethod("groupServer",
               #################
 
               get_gparam = function() {
-                print("--- Get gparam ----")
                 dgt = get.table(shiny::isolate(r$db), "datagroup_table")
                 gparam = as.list(jsonlite::fromJSON(dgt[dgt$key == obj@key, "gparam"]))
                 return(gparam)
@@ -390,7 +389,6 @@ setMethod("groupServer",
                 }
                 
                 shiny::withProgress(message = r$txt[[108]], value = 0, {
-                  print("Group settings are implemented")
                   lapply(group_server$data_objects, function(o) {
                     shiny::incProgress(1/n, detail = o@name)
                     indata = get.table(r$db, paste0(o@name, "_readin"))
@@ -398,14 +396,10 @@ setMethod("groupServer",
                     write.dbtable(r$db, paste0(o@name, "_clean"), cldata)
                   })
                   
-                  print("Premerge")
-                  print(paste("if:", identical(obj@dtype, "Timeseries")))
                   # Mere if dtype is "Timeseries"
                   if (identical(obj@dtype, "Timeseries")) {
-                    print("about to merge")
                     shiny::incProgress(1/n, detail = r$txt[[109]])
                     mgt_ts(r$db, names(group_server$data_objects))
-                    print("merge done")
                   }
   
                   if (any("Metadata" %in% pt$dtype) & any("Timeseries" %in% pt$dtype)) {
@@ -432,7 +426,6 @@ setMethod("groupServer",
               shiny::observeEvent(
                 eventExpr = group_server$delete_data,
                 handlerExpr = {
-                  print("Delete Data")
                   # Iterate over delete queue
                   lapply(group_server$delete_data, function(name) {
                     # Delete from database

@@ -10,7 +10,6 @@
 #' @importFrom shiny renderUI
 mod_ENV_ui <- function(id){
   ns <- NS(id)
-
   shiny::tabPanel(
     "ENV",# shiny::uiOutput(ns("ui_tab_title")),
     shiny::tagList(

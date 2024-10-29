@@ -30,7 +30,12 @@ golem::add_module(name = "selection") # Name of the module
 golem::add_module(name = "PCA") # Name of the module
 golem::add_module(name = "export") # Name of the module
 golem::add_module(name = "general") # Name of the module
-
+golem::add_module(name = "PCA-PCA") # Name of the module
+golem::add_module(name = "PCA-Pairing_of_component_loadings") # Name of the module
+golem::add_module(name = "PCA-Component_loadings") # Name of the module
+golem::add_module(name = "PCA-Combinations_of_principal_components") # Name of the module
+golem::add_module(name = "PCA-Linear_regression") # Name of the module
+golem::add_module(name = "PCA-Correlations") # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
@@ -48,28 +53,12 @@ golem::add_fct("classMetadata")
 golem::add_fct("classGeospatialData")
 golem::add_fct("classVectorData")
 golem::add_fct("classRasterData")
-golem::add_utils("connect_database")
-golem::add_utils("render_sidebar")
-golem::add_utils("connect_postgres")
-golem::add_utils("connect_sqlite")
-golem::add_utils("s4todataframe")
-golem::add_utils("boxcolor")
-golem::add_utils("optional_fun_param")
-golem::add_utils("return_matching_UI_element")
-golem::add_utils("instantiatePostgreSQL")
-golem::add_utils("instantiateSQLite")
-golem::add_utils("recreateDataObjects")
-golem::add_utils("random_address")
-golem::add_utils("setdifflist")
-golem::add_utils("insert_timeseries")
-golem::add_utils("datareading")
-golem::add_utils("join_timeseries_with_metadata")
-golem::add_utils("fetch_metadata")
-golem::add_utils("read_shapefile")
-golem::add_utils("autocorrelation")
-golem::add_utils("plots")
-
-
+golem::add_utils("home")
+golem::add_utils("import")
+golem::add_utils("selection")
+golem::add_utils("pca")
+golem::add_utils("export")
+golem::add_utils("database")
 
 ## External resources
 ## Creates .js and .css files at inst/app/www
@@ -114,7 +103,13 @@ acc = c(
   dbname = "mydb"
 )
 
-internal = list("apptext" = apptext, "acc" = acc, "sampledata" = sampledata)
+world = rnaturalearth::ne_countries(scale = "medium", returnclass = "sf") |>
+  sf::st_combine() |>
+  rmapshaper::ms_simplify(keep = 0.03) |>
+  sf::st_as_sf()
+
+internal = list("apptext" = apptext, "acc" = acc, "sampledata" = sampledata,
+                "world" = world)
 usethis::use_data(internal, internal = TRUE, overwrite = TRUE)
 
 # Tests ----

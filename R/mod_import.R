@@ -52,9 +52,9 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
     #################
 
     # Fetch group objects from database
-    get_group_objects = function () {
+    get_group_objects = function (db) {
       print("Get groups")
-      dgt = get.table(shiny::isolate(r$db), "datagroup_table")
+      dgt = get.table(db, "datagroup_table")
       dgt = dgt[dgt$dtype == dtype,]
       go = lapply(dgt$key, function(key) {
         methods::new(
@@ -89,6 +89,7 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
         # Call group servers
         lapply(import_server$group_objects, function(o) {
           groupServer(o, r = r, import_server = import_server)
+          groupUI(o)
         })
     })
 
@@ -96,7 +97,6 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
     shiny::observeEvent(
       eventExpr = input$addgroup,
       handlerExpr = {
-        print("Add a  group")
         # Check if group already exists
         if (!(input$groupname %in% c(names(import_server$group_objects), ""))) {
           # If groupname is valid add group to datagroup_table
@@ -110,14 +110,14 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
             )
           )
           # Update import_server$group_objects
-          import_server$group_objects = get_group_objects()
+          import_server$group_objects = get_group_objects(r$db)
         } else {
           shiny::showNotification(paste(input$groupname, "already exists"), type = "error")
         }
     })
 
     # 3.2. Observe predefined groups
-    observeEvent(import_server$predefined_groups, {
+    observeEvent(c(r$db, import_server$predefined_groups), {
       lapply(import_server$predefined_groups, function(n) {
         if (!(n %in% get.table(r$db, "datagroup_table")$name)) {
           # If groupname is valid add group to datagroup_table
@@ -130,9 +130,9 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
               gparam = jsonlite::toJSON(list(color = "grey"))
             )
           )
-          # Update import_server$group_objects
-          import_server$group_objects = get_group_objects()
         }
+        # Update import_server$group_objects
+        import_server$group_objects = get_group_objects(r$db)
       })
     })
 
@@ -166,7 +166,7 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
 
     # Group box array
     output$ui_group_array <- shiny::renderUI({
-      import_server$group_objects = get_group_objects()
+      import_server$group_objects = get_group_objects(r$db)
 
       lapply(
         X = import_server$group_objects,

@@ -30,7 +30,6 @@ setMethod("connect.database",
               RSQLite::SQLite(),
               file.path(extdata_path, "sqlitedb.db")
             )
-            # Eventually create primary_table
             if (!("primary_table" %in% user.tables(d)$tablename)) {
               create.primarytable(d)
             }

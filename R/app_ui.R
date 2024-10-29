@@ -9,7 +9,7 @@
 #'
 #' @noRd
 
-app_ui <- function(request) {
+app_ui <- function(request, admin) {
   mytheme <- fresh::create_theme(
     fresh::adminlte_color(
       light_blue = "#4ba046"
@@ -43,17 +43,17 @@ app_ui <- function(request) {
       # Sidebar
       shinydashboard::dashboardSidebar(
         br(),
-        # Shiny image output
-        shiny::fluidRow(
-          col_10(
-            shiny::img(
-              src = 'www/zalfLogo2.png',
-              width = "100%",
-              style = "display: block; margin-left: 20px; margin-right: 5px;"
-            )
-          )
-        ),
-        hr(style = "border-top: 1px solid #c1c9bf;"),
+        # # Shiny image output
+        # shiny::fluidRow(
+        #   col_10(
+        #     shiny::img(
+        #       src = 'www/zalfLogo2.png',
+        #       width = "100%",
+        #       style = "display: block; margin-left: 20px; margin-right: 5px;"
+        #     )
+        #   )
+        # ),
+        # hr(style = "border-top: 1px solid #c1c9bf;"),
         shinydashboard::sidebarMenu(
           id="mytabs",
           shinydashboard::sidebarMenuOutput("sidebarmenu")
@@ -127,7 +127,7 @@ app_ui <- function(request) {
               type = "tabs",
               mod_general_ui("general_settings"),
               mod_database_ui("database_tab"),
-              mod_ENV_ui("ENV_1")
+              mod_ENV_ui("ENV")
             )
           )
         )
@@ -160,3 +160,37 @@ golem_add_external_resources <- function() {
     # for example, you can add shinyalert::useShinyalert()
   )
 }
+
+#' render_sidebar
+#'
+#' @description Render sidebar menu based on textelements
+#'
+#' @return sidebarmenu A shinydashboard::renderMenu()-menu
+#'
+#' @noRd
+#'
+#' @importFrom shinydashboard renderMenu sidebarMenu menuItem
+#' @importFrom purrr pmap
+#' @importFrom shiny icon
+
+render_sidebar <- function(apptext) {
+  # Define sidebar menu content
+  menu_items <- data.frame(
+    name = apptext,
+    id = c("home", "import",  "selection", "pca", "export", "settings"),
+    icon = c("house", "file-arrow-up", "filter", "wave-square", "file-arrow-down", "gear")
+  )
+  
+  # Build sidebar menu
+  sidebarmenu <- shinydashboard::sidebarMenu(
+    # Iterate over menu_items name and id
+    purrr::pmap(
+      list(menu_items$name, menu_items$id, menu_items$icon),
+      \(x, y, i) shinydashboard::menuItem(x, tabName = y, icon = shiny::icon(i))
+    )
+  )
+  
+  
+  return(sidebarmenu)
+}
+

@@ -1,3 +1,43 @@
+#' fetch_metadata
+#'
+#' @description A utils function
+#'
+#' @return The return value, if any, from executing the utility.
+#'
+#' @noRd
+
+fetch_metadata = function(metadata, ids, field) {
+  if (!is.null(metadata)) {
+    do.call(rbind.data.frame, lapply(metadata, function(df) {
+      if (all(c("id", field) %in% colnames(df))) {
+        return(df[df$id %in% ids, c("id", field)])
+      }
+    }))
+  }
+}
+
+#' format_plot 
+#'
+#' @description A utils function
+#'
+#' @return The return value, if any, from executing the utility.
+#'
+#' @noRd
+
+format_plot = function(p) {
+  cap = paste("Source: PCApp", format(Sys.Date(), "%Y"))
+                  
+  if (is.null(p)) return(NULL)
+  p = p +
+    ggplot2::labs(caption = cap) +
+    ggplot2::theme(
+      plot.caption = ggplot2::element_text(color = "gray", face = "italic"),
+      plot.caption.position = "plot",
+      plot.background = ggplot2::element_rect(colour = "white")
+    )
+  return(p)
+}
+
 #' plots 
 #'
 #' @description A utils function
@@ -84,7 +124,7 @@ avaliable_ts = function(df1, df2, txt) {
 #   return(p)
 # }
 
-alpha_plot = functacfalpha_plot = function(acf, input_alpha, classes) {
+alpha_plot = function(acf, input_alpha, classes) {
   if (is.null(acf) | is.null(input_alpha)) return(NULL)
   
   alphas = seq(0.1, 1.0, by = 0.1)
@@ -117,3 +157,68 @@ alpha_plot = functacfalpha_plot = function(acf, input_alpha, classes) {
   return(p)
   
 }
+
+ 
+## ids() function
+
+## Returns the ids of the timeseries.
+ids = function(pt, hashs) {
+  pt[pt$name %in% hashs,"id"]
+}
+
+nms = function(ids, metadata) {
+  print("nms fkt")
+  df = purrr::map_df(metadata, function(md) {
+    if (all(c("id", "name") %in% colnames(md))) {
+      return(md[,c("id", "name")])
+    }
+  })
+  print(head(df))
+  nms = unique(df[df$id %in% ids,"name"])
+  print(nms)
+  return(nms)
+}
+
+## circle_fun() function
+
+## Credits @joran:
+## https://stackoverflow.com/questions/6862742/draw-a-circle-with-ggplot2
+circle_fun <- function(center = c(0,0),diameter = 1, npoints = 100){
+  r = diameter / 2
+  tt <- seq(0,2*pi,length.out = npoints)
+  xx <- center[1] + r * cos(tt)
+  yy <- center[2] + r * sin(tt)
+  return(data.frame(x = xx, y = yy))
+}
+
+## group() function
+
+## Returns the ids of the timeseries.
+group = function(pt, dgt, hashs) {
+  gr = pt[pt$name %in% hashs,"dgroup"]
+  gr = sapply(gr, function (gkey) dgt[dgt$key == gkey,"name"])
+  return(gr)
+}
+
+## color() function
+
+color = function(pt, dgt, hashs) {
+  print("# Color function")
+  print(dgt)
+  gr = pt[pt$name %in% hashs, "dgroup"]
+  gr = sapply(gr, function (gkey) jsonlite::fromJSON(dgt[dgt$key == gkey,"gparam"])[["color"]])
+}
+
+## get_timeseries() function
+
+get_timeseries = function(db) {
+  if ("selected_timeseries" %in% user.tables(db)$tablename) {
+    t = get.table(db, "selected_timeseries")
+    t$timestamp = as.Date(t$timestamp)
+    return(t)
+  } else {
+    return(data.frame())
+  }
+}
+
+
