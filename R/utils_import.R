@@ -101,7 +101,6 @@ head_data <- function(d, name, readm, g) {
 
 join_timeseries_with_metadata = function(db) {
   
-  print("# --- JOIN TIMESERIES AND METADATA --------")
   user_tables = user.tables(db)$tablename
   
   primary_table = get.table(db, "primary_table")
@@ -120,7 +119,6 @@ join_timeseries_with_metadata = function(db) {
       if (paste0(ts, "_head") %in% user_tables) {
         head = toString(get.table(db, paste0(ts, "_head"))$data)
       } else {
-        print("No head")
         return(NULL)
       }
       matches = sapply(ids, grepl, x = head)
@@ -155,16 +153,12 @@ join_timeseries_with_metadata = function(db) {
       if ("id" %in% colnames(md)) {
         md$id = trimws(format(md$id, scientific = FALSE))
         md = merge(matched_ids, md, by = "id", all.x = TRUE)
-        print(md)
         return(md)
       } else {
         return(NULL)
       }
     })
-    
-    print("r metadada")
-    print(head(metadata_for_global))
-    
+
     # Return the list in orer to store it in global variable r
     return(metadata_for_global)
     

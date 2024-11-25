@@ -44,9 +44,10 @@ mod_PCA_PCA_ui <- function(id){
       shinydashboard::box(
         width = "100%", solidHeader = TRUE,
         shiny::fluidRow(
-          col_12(
-            plotOutput(ns("plotPercentofVariance"))
-          )
+          plotOutput(ns("plotPercentofVariance"))
+        ),
+        shiny::fluidRow(
+          shiny::uiOutput(ns("comm_plot_radioButton"))
         )
       ),
       # Header
@@ -82,7 +83,7 @@ mod_PCA_PCA_server <- function(id, r){
       }
     })
     
-    ## communalities() function
+    ## comm_plot() function
     communalities = shiny::reactive({
       # Calculate percent of total variance
       pTV = r$pca$eigenvalues / sum(r$pca$eigenvalues) * 100
@@ -91,25 +92,17 @@ mod_PCA_PCA_server <- function(id, r){
       df = data.frame(PC = paste0(1:length(pTV), "."), ev = r$pca$eigenvalues,
                       pTV = pTV, csum = cumsum(pTV))
       df$PC <- factor(df$PC, levels = df$PC)
-
-      # Crop
-      # df = df[1:(length(which(r$pca$eigenvalues>=1))+1),]
-
-      p = ggplot2::ggplot(df, ggplot2::aes(x = PC, y = csum)) +
-        ggplot2::geom_bar(stat="identity", col = "black", fill = "white") +
-        ggplot2::geom_text(
-          ggplot2::aes(label=format(csum, digits = 1)),
-          vjust = 1.6
-        )+
-        ggplot2::geom_text(
-          ggplot2::aes(label = format(round(ev, 2), digits = 2)),
-          vjust = -1,
-          color = "grey40"
-        )+
-
-        ggplot2::theme_minimal()
-
-      return(p)
+      
+      return(df)
+      
+    })
+    
+    comm_plot = shiny::reactive({
+      if (identical(input$comm_plot_type, r$txt[[121]])) {
+        comm_plot_bar(communalities(), label = r$txt[[64]])
+      } else if (identical(input$comm_plot_type, r$txt[[122]])) {
+        comm_plot_stacked(communalities(), label = r$txt[[64]])
+      }
     })
     
     pc_names = shiny::reactive(
@@ -132,8 +125,8 @@ mod_PCA_PCA_server <- function(id, r){
       r$flip = s
     })
     
-    # observeEvent(communalities(), {
-    #   r$plots[["communalities"]] = format_plot(communalities())
+    # observeEvent(comm_plot(), {
+    #   r$plots[["communalities"]] = format_plot(comm_plot())
     # })
     #
     
@@ -142,7 +135,6 @@ mod_PCA_PCA_server <- function(id, r){
     # })
     
     # _. UI elements
-    
     
     output$ui_PCA_title <- shiny::renderText(r$txt[[55]])
     
@@ -158,8 +150,8 @@ mod_PCA_PCA_server <- function(id, r){
       shiny::titlePanel(r$txt[[85]])
     })
     
-    output$plotPercentofVariance = renderPlot({
-      communalities()
+    output$plotPercentofVariance = shiny::renderPlot({
+      comm_plot()
     })
 
     output$pcs = renderPlot({
@@ -186,6 +178,14 @@ mod_PCA_PCA_server <- function(id, r){
       )
       
     })
+    
+    output$comm_plot_radioButton = shiny::renderUI(
+      shinyThings::buttonGroup(
+        inputId = ns("comm_plot_type"),
+        choices = c(r$txt[[121]], r$txt[[122]]),
+        selected = r$txt[[121]]
+      )
+    )
     
   })
 }

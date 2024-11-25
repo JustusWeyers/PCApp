@@ -1,0 +1,1 @@
+[9] In dieser Abbildung sind zum Vergleich die Bestimmtheitsmaße aller durchgeführten Berechnungen von Referenzhydrographen aufgetragen. Durch klicken auf einen Balken werden die zugehörigen Regressionsergebnisse angezeigt.

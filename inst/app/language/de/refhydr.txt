@@ -1,0 +1,1 @@
+[8] Diese Abbildung zeigt den ursprünglichen Verlauf der Zeitreihe #s in grau und den mittels Linearer Regression erhaltenen Referenzhydrographen in schwarz. Das Bestimmtheitsmaß beträgt \(r^2 = #s\).

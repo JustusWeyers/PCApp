@@ -44,7 +44,17 @@ setMethod("boxUI",
                 ####
 
                 # The displayed box
-                shiny::plotOutput(ns("ui_map"))
+                shiny::fluidRow(
+                  col_12(
+                    shiny::plotOutput(ns("ui_map"))
+                  )
+                ),
+                
+                shiny::fluidRow(
+                  col_2(
+                    shiny::uiOutput(ns("ui_delete_button"))
+                  )
+                )
 
                 ####
 
@@ -62,19 +72,39 @@ setMethod("boxServer",
               ns <- session$ns
 
               ####
+              
+              # Constants
+              
+              RANDOMADDRESS = random_address()
 
-              shp = reactive(
+              # Reactives
+              
+              shp = shiny::reactive(
                 sf::st_read(r$db@con, obj@name)
               )
 
-              map = reactive({
+              map = shiny::reactive({
                 ggplot2::ggplot(shp()) +
                   ggplot2::geom_sf() +
                   ggplot2::theme_minimal()
               })
+              
+              # Server
+              
+              ## Observe delete button
+              shiny::observeEvent(input[[paste0(RANDOMADDRESS, "_delete_button")]], {
+                # Add data to delete queue
+                group_server$delete_data <- append(group_server$delete_data, obj@name)
+              })
+              
+              # UI
 
               output$ui_map = shiny::renderPlot(
                 map()
+              )
+              
+              output$ui_delete_button <- shiny::renderUI(
+                shiny::actionButton(ns(paste0(RANDOMADDRESS, "_delete_button")), label = r$txt[32], width = "100%")
               )
 
               ####
@@ -86,8 +116,6 @@ setMethod("boxServer",
 setMethod("clean_data",
           methods::signature(dataobject = "VectorData"),
           function (dataobject, db, options) {
-
-            return(df)
 
           }
 )

@@ -1,0 +1,1 @@
+[8] This figure shows the original course of the time series #s in gray and the reference hydrograph obtained by linear regression in black. The coefficient of determination is \(r^2 = #s\).

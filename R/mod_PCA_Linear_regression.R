@@ -28,8 +28,8 @@ mod_PCA_Linear_regression_ui <- function(id){
             width = "100%", solidHeader = TRUE,
             shiny::fluidRow(
               col_12(
-                shiny::plotOutput(
-                  outputId = ns("ref_ts_plot")
+                shiny::uiOutput(
+                  ns("ref_ts_plot")
                 )
               )
             )
@@ -38,29 +38,11 @@ mod_PCA_Linear_regression_ui <- function(id){
       ),
       
       fluidRow(
-        col_6(
-          shinydashboard::box(
-            width = "100%", solidHeader = TRUE,
-            shiny::fluidRow(
-              col_12(
-                shiny::uiOutput(ns("barplot"))
-              )
-            )
-          )
-        ),
-        col_6(
-          shinydashboard::box(
-            width = "100%", solidHeader = TRUE,
-            shiny::fluidRow(
-              col_12(
-                shiny::verbatimTextOutput(
-                  outputId = ns("ref_summary")
-                )
-              )
-            )
-          )
+        col_12(
+          shiny::uiOutput(ns("tabbox"))
         )
       ),
+
       
       fluidRow(
         col_12(
@@ -122,27 +104,34 @@ mod_PCA_Linear_regression_server <- function(id, r){
     )
     
     ref_ts_plot = shiny::reactive({
-      if (is.null(ref_server$selected_id)) return(NULL)
-      print(paste("ids:", ids(ref_server$primary_table, ref_server$selected_id)))
-      plotids = ids(ref_server$primary_table, ref_server$selected_id)
-      sub = paste0(
-        nms(plotids, metadata()),
-        " (",
-        plotids,
-        ")"
-        )
+      if (is.null(ref_server$selected_id)) {
+        ref_server$selected_id = refhydr()$hashs[sample.int(nrow(refhydr()), 1)]
+      }
+      
+      # plotids = ids(ref_server$primary_table, ref_server$selected_id)
+      # 
+      # sub = paste0(
+      #   nms(plotids, metadata()),
+      #   " (",
+      #   plotids,
+      #   ")"
+      #   )
+      
       plotdf = refhydr()[refhydr()$hashs == ref_server$selected_id,] |>
         tidyr::unnest(augment)
+      
+      
       plotdf$timestamp = r$ts$timestamp
+      
       p = ggplot2::ggplot(plotdf) +
         ggplot2::geom_line(ggplot2::aes(x = timestamp, y = ts), color = "grey") +
         ggplot2::geom_line(ggplot2::aes(x = timestamp, y = .fitted)) +
         ggplot2::xlab(r$txt[[115]]) +
         ggplot2::ylab(r$txt[[119]]) +
-        ggplot2::labs(
-          title = r$txt[[116]],
-          subtitle = sub
-        ) +
+        # ggplot2::labs(
+        #   title = r$txt[[116]],
+        #   subtitle = sub
+        # ) +
         ggplot2::theme(
           plot.title = ggplot2::element_text(face = "bold", size = 12)
         ) +
@@ -190,9 +179,14 @@ mod_PCA_Linear_regression_server <- function(id, r){
       i = round(input$bar_click$y)
       ref_server$selected_id = refhydr()$hashs[order(refhydr()$rsq)][i]
     })
-
-    observeEvent(ref_ts_plot(), {
-      r$plots[["ref_ts_plot"]] = format_plot(ref_ts_plot())
+    
+    
+    glance = shiny::reactive({
+      df = refhydr()
+      df$ids = ids(ref_server$primary_table, df$hashs)
+      df$names = nms(df$ids, metadata())
+      identity = df[,c("hashs", "ids", "names")]
+      return(data.frame(cbind(identity, dplyr::bind_rows(df$glance))))
     })
     
     # 4. UI elements
@@ -206,14 +200,28 @@ mod_PCA_Linear_regression_server <- function(id, r){
       }
     })
 
-    output$ref_ts_plot = shiny::renderPlot(ref_ts_plot())
-     
+    output$ref_ts_plot = shiny::renderUI({
+      hash = as.character(ref_server$selected_id)
+      rsq = as.character(round(refhydr()$rsq[refhydr()$hashs == ref_server$selected_id], 2))
+      po = methods::new(
+        "PlotPanel", 
+        name = "referencehydrograph", 
+        caption = r$txt[["refhydr.txt"]],
+        fillins = c(hash, rsq),
+        plot = list(ref_ts_plot())
+      )
+      plotServer(po, r)
+      po@name <- ns(po@name)
+      return(plotUI(po)())
+    })
+    
     output$ref_bar_plot = shiny::renderPlot({
       plotdf = refhydr()
       ggplot2::ggplot(plotdf, ggplot2::aes(x = stats::reorder(hashs, rsq), y = rsq)) +
         ggplot2::geom_bar(stat = "identity") +
         ggplot2::ylim(c(0, 1)) +
         ggplot2::coord_flip() +
+        ggplot2::ylab("r^2") +
         ggplot2::theme_minimal()
     })
     
@@ -231,7 +239,7 @@ mod_PCA_Linear_regression_server <- function(id, r){
       shiny::plotOutput(
         outputId = ns("ref_bar_plot"),
         click = ns("bar_click"),
-        height = 10*nrow(refhydr())
+        height = 200 + 10*nrow(refhydr())
       )
     )
     
@@ -241,7 +249,55 @@ mod_PCA_Linear_regression_server <- function(id, r){
     
     output$ui_tab_title_regression <- shiny::renderText(r$txt[93])
     
- 
+    output$glance = DT::renderDataTable(
+      options = list(scrollX = TRUE),
+      selection = 'single',
+      glance()
+    )
+    
+    output$tabbox = shiny::renderUI(
+      shinydashboard::tabBox(
+        width = "100%",
+        shiny::tabPanel(
+          r$txt[[123]], 
+          fluidRow(
+            col_12(
+              col_6(
+                shinydashboard::box(
+                  width = "100%", solidHeader = TRUE,
+                  shiny::fluidRow(
+                    col_12(
+                      shiny::uiOutput(ns("barplot"))
+                    )
+                  )
+                )
+              ),
+              col_6(
+                shinydashboard::box(
+                  width = "100%", solidHeader = TRUE,
+                  shiny::fluidRow(
+                    col_12(
+                      shiny::verbatimTextOutput(
+                        outputId = ns("ref_summary")
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ),
+        shiny::tabPanel(
+          r$txt[[53]],
+          shiny::fluidRow(
+            col_12(
+              DT::DTOutput(ns("glance"))
+            )
+          )
+        )
+      )
+    )
+
   })
 }
     

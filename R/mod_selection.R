@@ -809,7 +809,7 @@ mod_selection_server <- function(id, r){
 
     ## Render title for the cache section.
     output$ui_header4 = shiny::renderUI(
-      expr = shiny::titlePanel(r$txt[[71]])
+      expr = shiny::titlePanel(r$txt[[72]])
     )
 
     ## Cache action button.

@@ -393,6 +393,7 @@ setMethod("groupServer",
                     shiny::incProgress(1/n, detail = o@name)
                     indata = get.table(r$db, paste0(o@name, "_readin"))
                     cldata = clean_data(dataobject = o, db = r$db, options = group_option_inputs())
+                    print(head(cldata))
                     write.dbtable(r$db, paste0(o@name, "_clean"), cldata)
                   })
                   
@@ -428,7 +429,7 @@ setMethod("groupServer",
                 handlerExpr = {
                   # Iterate over delete queue
                   lapply(group_server$delete_data, function(name) {
-                    # Delete from database
+                    # # Delete from database
                     delete.data(r$db, group_server$data_objects[[name]])
                     # Delete from groupdata
                     group_server$data_objects[name] <- NULL
@@ -558,10 +559,24 @@ setMethod("groupServer",
                     )
 
                   }
+                  # if (le_name == "unit") {
+                  #   ui = list(
+                  #     ui, shiny::hr(style = "border-top: 1px solid #c1c9bf;")
+                  #   )
+                  # }
                   return(ui)
                 }
 
-                ui = purrr::map2(go, names(go), render_group_options_ui)
+                ui_list = purrr::map2(go, names(go), render_group_options_ui)
+                
+                ui = shiny::fluidRow(
+                  col_6(
+                    split(ui_list, ceiling(seq_along(ui_list) / ceiling(length(ui_list)/2)))[1]
+                  ), col_6(
+                    split(ui_list, ceiling(seq_along(ui_list) / ceiling(length(ui_list)/2)))[2]
+                  )
+                )
+                
 
                 return(ui)
 
@@ -602,27 +617,48 @@ setMethod("groupServer",
                 return(ui)
               })
 
-              # ## Group options box
-              # output$ui_groupoptions <- shiny::renderUI(
-              # 
-              # )
+              ## Group options box
+              output$ui_groupoptions <- shiny::renderUI(
+                if (identical(obj@dtype, "VectorData")) {
+                  return(NULL)
+                } else {
+                  # Box with options
+                  shinydashboard::box(
+                    # Box parameters
+                    id = ns(paste0(RANDOMADDRESS, "_groupoptions")),
+                    title = r$txt[46],
+                    width = 12,
+                    collapsible = TRUE,
+                    collapsed = TRUE,
+                    
+                    # Box content
+                    shiny::uiOutput(ns("ui_color_picker")),
+                    shiny::uiOutput(ns("ui_group_options")),
+                    col_6(shiny::uiOutput(ns("ui_apply_button")))
+                  )
+                }
+              )
 
               ## Upload options box
-              output$ui_readoptions <- shiny::renderUI(
-                # Box with options
-                shinydashboard::box(
-                  # Box parameters
-                  id = ns(paste0(RANDOMADDRESS, "_uploadoptions")),
-                  title = r$txt[48],
-                  width = 12,
-                  collapsible = TRUE,
-                  collapsed = TRUE,
-
-                  # Box content
-                  shiny::uiOutput(ns("ui_read_parameter")),
-                  shiny::uiOutput(ns("ui_apply_button_read"))
-                )
-              )
+              output$ui_readoptions <- shiny::renderUI({
+                if (identical(obj@dtype, "VectorData")) {
+                  return(NULL)
+                } else {
+                  # Box with options
+                  shinydashboard::box(
+                    # Box parameters
+                    id = ns(paste0(RANDOMADDRESS, "_uploadoptions")),
+                    title = r$txt[48],
+                    width = 12,
+                    collapsible = TRUE,
+                    collapsed = TRUE,
+                    
+                    # Box content
+                    shiny::uiOutput(ns("ui_read_parameter")),
+                    shiny::uiOutput(ns("ui_apply_button_read"))
+                  )
+                }
+              })
 
               ## Input Box
               output$ui_inputBox <- shiny::renderUI({
@@ -656,37 +692,12 @@ setMethod("groupServer",
                   ),
                   shiny::fluidRow(
                     col_4(
-                      # Box with options
-                      shinydashboard::box(
-                        # Box parameters
-                        id = ns(paste0(RANDOMADDRESS, "_uploadoptions")),
-                        title = r$txt[48],
-                        width = 12,
-                        collapsible = TRUE,
-                        collapsed = TRUE,
-                        
-                        # Box content
-                        shiny::uiOutput(ns("ui_read_parameter")),
-                        shiny::uiOutput(ns("ui_apply_button_read"))
-                      )
+                      shiny::uiOutput(ns("ui_readoptions"))
                     ),
-                    col_4(
-                      # Box with options
-                      shinydashboard::box(
-                        # Box parameters
-                        id = ns(paste0(RANDOMADDRESS, "_groupoptions")),
-                        title = r$txt[46],
-                        width = 12,
-                        collapsible = TRUE,
-                        collapsed = TRUE,
-                        
-                        # Box content
-                        shiny::uiOutput(ns("ui_color_picker")),
-                        shiny::uiOutput(ns("ui_group_options")),
-                        col_6(shiny::uiOutput(ns("ui_apply_button")))
-                      )
+                    col_6(
+                      shiny::uiOutput(ns("ui_groupoptions"))
                     ),
-                    col_4(
+                    col_2(
                       if (!(obj@name %in% import_server$predefined_groups)) {
                         shiny::actionButton(
                           # Action button parameters

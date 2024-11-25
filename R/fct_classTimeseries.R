@@ -24,15 +24,18 @@ setClass("Timeseries",
            readmethod = "character",
            readmethods = "character",
            rparam = "list",
-           id = "character"
+           id = "character",
+           clname = "character"
          ),
          prototype = list(
            cc = list(
              timestamp = "col_select",
+             subject = "text_input",
+             unit = "text_input",
              value = "col_select",
              missing_val = "text_input",
              dateformat = "text_input"
-           ),
+             ),
            dparam = list(),
            readmethod = c(
              "read.csv"
@@ -42,7 +45,8 @@ setClass("Timeseries",
              "read.csv2",
              "read.table"
            ),
-           rparam = list()
+           rparam = list(),
+           clname = NA_character_
          )
 )
 
@@ -76,7 +80,6 @@ setMethod("boxServer",
           definition = function(obj, r, group_server) {
             server <- shiny::moduleServer(obj@name, function(input, output, session) {
               ns <- session$ns
-
 
               ####
 
@@ -258,11 +261,13 @@ setMethod("boxServer",
 setMethod("clean_data",
           methods::signature(dataobject = "Timeseries"),
           function (dataobject, db, options) {
+            print("clean_data")
 
             data = get.table(db, paste0(dataobject@name, "_readin"))
 
             # Central column names
             central_cnms = unlist(options)[unname(unlist(options)) %in% colnames(data)]
+            print(central_cnms)
 
             df = data[,central_cnms]
 
@@ -285,6 +290,8 @@ setMethod("clean_data",
             # df$value = as.numeric(df$value)
 
             colnames(df) <- c("timestamp", dataobject@name)
+            
+            print("/clean_data")
 
             return(df)
 

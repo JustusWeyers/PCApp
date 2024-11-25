@@ -38,6 +38,11 @@ mod_export_ui <- function(id){
       shinydashboard::box(
         width = "100%", solidHeader = TRUE,
         shiny::fluidRow(
+          col_12(
+            shiny::uiOutput(ns("checkboxarray"))
+          )
+        ),
+        shiny::fluidRow(
           col_6(
             shiny::uiOutput(ns("download_data_button"))
           ),
@@ -55,19 +60,7 @@ mod_export_ui <- function(id){
       ##
       ##
       ##
-      shinydashboard::box(
-        width = "100%", solidHeader = TRUE,
-        shiny::fluidRow(
-          col_8(
-            col_4(
-              shiny::uiOutput(ns("download_images_button"))
-            ),
-            col_8(
-              shiny::uiOutput(ns("img_parameter_box"))
-            )
-          )
-        )
-      )
+      shiny::uiOutput(ns("img_parameter_box"))
 
     )
   )
@@ -82,17 +75,86 @@ mod_export_server <- function(id, r){
 
     # .. Server logic via observers
 
-    observeEvent(input$img_format, {
-      print("Plots")
-      print(r$plots)
+    observeEvent(c(input$img_format, input$img_unit, input$img_width, input$img_height), {
+      r$settings[["img_format"]] = input$img_format
+      r$settings[["img_unit"]] = input$img_unit
+      r$settings[["img_width"]] = input$img_width
+      r$settings[["img_height"]] = input$img_height
     })
-
+    
+    # Download
+    
     # .. UI elements rendering
 
     ## Data
+    
 
+    
+    internal_tables = shiny::reactive(
+      intersect(user.tables(r$db)$tablename, c("primary_table", "datagroup_table", "settings", "selection_table", "selected_timeseries"))
+    )
+    
+    pca_tables = shiny::reactive(
+      intersect(user.tables(r$db)$tablename, c("principal_components", "scaled_timeseries_table", "loadings", "timeseries_table", "reference_hydrographs"))
+    )
+    
+    readin_tables = shiny::reactive(
+      setdiff(user.tables(r$db)$tablename, c(internal_tables(), pca_tables()))
+    )
+    
+    output$internal_checkboxes = shiny::renderUI(
+      shiny::checkboxGroupInput(
+        inputId = ns("internal_checkboxes"),
+        label = NULL,
+        choices = internal_tables()
+      )
+    )
+    
+    output$pca_checkboxes = shiny::renderUI(
+      shiny::checkboxGroupInput(
+        inputId = ns("pca_checkboxes"),
+        label = NULL,
+        choices = pca_tables()
+      )
+    )
+    
+    output$readin_checkboxes = shiny::renderUI(
+      shiny::checkboxGroupInput(
+        inputId = ns("readin_checkboxes"),
+        label = NULL,
+        choices = readin_tables()
+      )
+    )
+    
+    output$checkboxarray = shiny::renderUI({
+      shiny::fluidRow(
+        col_6(
+          shinydashboard::box(
+            title = "Readin", width = "100%",
+            collapsed = TRUE, collapsible = TRUE,
+            shiny::uiOutput(ns("readin_checkboxes"))
+          ),
+          shinydashboard::box(
+            title = "PCA", width = "100%",
+            collapsed = TRUE, collapsible = TRUE,
+            shiny::uiOutput(ns("pca_checkboxes"))
+          ),
+          shinydashboard::box(
+            title = "Internal", width = "100%",
+            collapsed = TRUE, collapsible = TRUE,
+            shiny::uiOutput(ns("internal_checkboxes"))
+          )
+        )
+      )
+    })
+    
+    
     output$data_header = shiny::renderUI({
       expr = shiny::titlePanel(r$txt[[101]])
+    })
+    
+    available_tables = shiny::reactive({
+      c(input$internal_checkboxes, input$readin_checkboxes, input$pca_checkboxes)
     })
 
     output$download_data = shiny::downloadHandler(
@@ -103,10 +165,13 @@ mod_export_server <- function(id, r){
         fs <- c()
         tmpdir <- tempdir()
         setwd(tempdir())
-        for (i in c(1,2,3,4,5)) {
-          path <- paste0("sample_", i, ".csv")
+
+        print(available_tables())
+        
+        for (tblnm in c(available_tables())) {
+          path <- paste0(tblnm, ".csv")
           fs <- c(fs, path)
-          write(i*2, path)
+          write.csv(get.table(r$db, tblnm), path, row.names = FALSE)
         }
         zip(zipfile=fname, files=fs)
       },
@@ -172,7 +237,6 @@ mod_export_server <- function(id, r){
     output$img_parameter_box = shiny::renderUI({
       shinydashboard::box(
         width = "100%", title = r$txt[[36]],
-        collapsed = TRUE, collapsible = TRUE,
         col_3(
           shiny::uiOutput(ns("image_format")),
         ),
@@ -187,45 +251,6 @@ mod_export_server <- function(id, r){
         )
       )
     })
-    
-    # Download 
-
-    output$download_images = shiny::downloadHandler(
-      filename = function() {
-        paste("output", "zip", sep=".")
-      },
-      content = function(fname) {
-        tryCatch({
-          fs <- c()
-          tmpdir <- tempdir()
-          setwd(tempdir())
-          for (i in 1:length(r$plots)) {
-            if (is.null(input$img_format)) {
-              f = "png"
-            } else {
-              f = input$img_format
-            }
-            path <- paste0(names(r$plots)[[i]], ".", f)
-            fs <- c(fs, path)
-            w = NA
-            h = NA
-            u = c("in", "cm", "mm", "px")
-            if (!is.null(input$img_width) & identical(input$img_format, "png")) {
-              w = input$img_width 
-              h = input$img_height
-              u = input$img_unit
-            }
-            ggplot2::ggsave(path, plot = r$plots[[i]], width = w, height = h, units = u)
-          }
-          zip(zipfile=fname, files=fs)
-        }, error = function(e) print(e))
-      },
-      contentType = "application/zip"
-    )
-
-    output$download_images_button = shiny::renderUI(
-      shiny::downloadButton(ns("download_images"), label = r$txt[[102]])
-    )
 
   })
 }

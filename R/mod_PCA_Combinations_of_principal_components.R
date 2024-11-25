@@ -64,7 +64,9 @@ mod_PCA_Combinations_of_principal_components_server <- function(id, r){
     combiplot = shiny::reactive({
       df = r$pca$pcs[,c("timestamp", "PC1")]
       df$PC1 = scale(df$PC1)
-      df$combi = (1-input$weight) * df$PC1 + input$weight * scale(r$pca$pcs[,input$combi_pc])
+      
+      df$combi = sqrt(1-input$weight) * df$PC1 + sqrt(input$weight) * scale(r$pca$pcs[,input$combi_pc])
+      
       colnames(df) = c("timestamp", "PC1", "combi")
 
       i = lubridate::interval(input$date_combi_slider[1], input$date_combi_slider[2])
@@ -87,10 +89,10 @@ mod_PCA_Combinations_of_principal_components_server <- function(id, r){
     
     # 3. Observers
     
-    observeEvent(combiplot(), {
-      r$plots[["combination_plot"]] = format_plot(combiplot())
-    })
-    
+    # observeEvent(combiplot(), {
+    #   r$plots[["combination_plot"]] = format_plot(combiplot())
+    # })
+    # 
     # 4. UI elements
     
     output$ui_combiplot = shiny::renderPlot(
@@ -117,15 +119,19 @@ mod_PCA_Combinations_of_principal_components_server <- function(id, r){
     )
 
     output$ui_weight_slider = shiny::renderUI(
+      
+      
       shiny::sliderInput(
         inputId = ns("weight"),
         label = paste(r$txt[[90]], input$combi_pc),
         min = 0,
         max = 1,
-        value = 1/sqrt(2),
-        step = 1/(10*sqrt(2)),
+        value = 0.5,
+        step = 0.05,
         round	= 2
       )
+      
+      
     )
     
     output$ui_header6 <- shiny::renderUI({

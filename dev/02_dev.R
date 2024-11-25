@@ -37,6 +37,7 @@ golem::add_module(name = "PCA-Combinations_of_principal_components") # Name of t
 golem::add_module(name = "PCA-Linear_regression") # Name of the module
 golem::add_module(name = "PCA-Correlations") # Name of the module
 
+
 ## Add helper functions ----
 ## Creates fct_* and utils_*
 golem::add_fct("database")
@@ -59,6 +60,7 @@ golem::add_utils("selection")
 golem::add_utils("pca")
 golem::add_utils("export")
 golem::add_utils("database")
+golem::add_fct("classPlotPanel")
 
 ## External resources
 ## Creates .js and .css files at inst/app/www
@@ -88,6 +90,7 @@ apptext = lapply(languages, function(l) {
     }
   }))
 })
+
 names(apptext) <- languages
 
 sampledata = read.csv("inst/app/sampledata/sampledata_weekly.csv")

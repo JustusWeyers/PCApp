@@ -167,15 +167,12 @@ ids = function(pt, hashs) {
 }
 
 nms = function(ids, metadata) {
-  print("nms fkt")
   df = purrr::map_df(metadata, function(md) {
     if (all(c("id", "name") %in% colnames(md))) {
       return(md[,c("id", "name")])
     }
   })
-  print(head(df))
   nms = unique(df[df$id %in% ids,"name"])
-  print(nms)
   return(nms)
 }
 
@@ -221,4 +218,53 @@ get_timeseries = function(db) {
   }
 }
 
+comm_plot_stacked = function(plotdf, label) {
+  plotdf$label = sapply(1:nrow(plotdf), function(x) {
+    if (plotdf$pTV[x] > 10 | plotdf$ev[x] > 0.9)  {
+      paste0("PC ", x, " (", format(plotdf$csum[x], digits = 3), "%, \u03BB = ",  round(plotdf$ev[x], 2), ")")
+    } else {
+      ""
+    }
+  })
+  ggplot2::ggplot(plotdf, ggplot2::aes(y=pTV, x = 0)) +
+    ggplot2::geom_bar(stat="identity", position = ggplot2::position_fill(reverse = TRUE), fill = "white", color = "black") +
+    ggplot2::geom_text(
+      ggplot2::aes(label = label, x = -0.4), 
+      vjust = 1.6, 
+      hjust = "left",
+      position = ggplot2::position_fill(reverse = TRUE),
+    ) +
+    ggplot2::xlim(-1, 1) +
+    ggplot2::ylab(paste(label, "[%]")) +
+    ggplot2::scale_y_continuous(
+      breaks = seq(0, 1, by = 0.2),
+      labels = seq(0, 100, by = 20)
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position="none",
+      axis.title.x = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_blank(),
+      axis.ticks.x = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(b = 20)
+    )
+}
 
+comm_plot_bar = function(plotdf, label) {
+  ggplot2::ggplot(plotdf, ggplot2::aes(x = PC, y = csum)) +
+    ggplot2::geom_bar(stat="identity", col = "black", fill = "white") +
+    ggplot2::geom_text(
+      ggplot2::aes(label = paste(format(csum, digits = 3), "%")),
+      vjust = 1.6
+    ) +
+    ggplot2::ylab(paste(label, "[%]")) +
+    ggplot2::scale_y_continuous(
+      breaks = seq(0, 100, by = 20)
+    ) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = paste("\u03BB = ", format(round(ev, 2), digits = 2))),
+      vjust = -1,
+      color = "grey40"
+    ) +
+    ggplot2::theme_minimal()
+}

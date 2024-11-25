@@ -84,25 +84,24 @@ mod_PCA_server <- function(id, r){
       apply(X = r$ts[,2:ncol(r$ts)], FUN=scale, MARGIN = 2)
     )
 
-    eigenvalues = reactive({
+    eigenvalues = shiny::reactive({
       eigen(stats::cov(z()))$values
     })
 
-    pca = reactive(
+    pca = shiny::reactive(
       stats::prcomp(z(), center=TRUE, scale.=TRUE, retx=TRUE)
     )
 
-    pcs = reactive({
+    pcs = shiny::reactive({
       pcs_ = data.frame(pca()$x)
       if (!is.null(r$flip)) {
-        print("flip pcs")
         pcs_[,r$flip] = pcs_[,r$flip] * (-1)
       }
       pcs_$timestamp = r$ts$timestamp
       return(pcs_)
     })
 
-    loadings = reactive({
+    loadings = shiny::reactive({
       CL = data.frame(pca()$rotation %*% diag(sqrt(eigenvalues())))
       if (!is.null(r$flip)) {
         CL[,r$flip] = CL[,r$flip] * (-1)
@@ -120,28 +119,42 @@ mod_PCA_server <- function(id, r){
     
     # 4. Server logic via observers
     
-    observeEvent(r$cache_selection_trigger, {
-      print("pca server observed cache")
-      pca_server$primary_table = get.table(shiny::isolate(r$db), "primary_table")
-      datagroup_table = get.table(shiny::isolate(r$db), "datagroup_table")
-      r$ts = get_timeseries(r$db)
-    })
-    
-    shiny::observeEvent(c(r$ts, r$flip), {
-      print("re-evaluate")
-      r$pca$z = z()
-      r$pca$eigenvalues = eigenvalues()
-      r$pca$pca = pca()
-      r$pca$pcs = pcs()
-      r$pca$loadings = loadings()
-    })
-    
-    shiny::observeEvent(r$db, {
+    shiny::observeEvent(c(r$db, r$cache_selection_trigger), {
       pca_server$primary_table = get.table(r$db, "primary_table")
       pca_server$datagroup_table = get.table(r$db, "datagroup_table")
       r$ts = get_timeseries(r$db)
       pca_server$selected_id = NULL
     })
+    
+    shiny::observeEvent(c(r$ts, r$flip), {
+      if (nrow(r$ts)>0) {
+        r$pca$z = z()
+        r$pca$eigenvalues = eigenvalues()
+        r$pca$pca = pca()
+        r$pca$pcs = pcs()
+        r$pca$loadings = loadings()
+      }
+    })
+    
+    shiny::observeEvent(pcs(), {
+      if (is(pcs(), "data.frame")) {
+        pcs = dplyr::select(pcs(), "timestamp", dplyr::everything())
+        write.dbtable(r$db, "principal_components", pcs)
+      }
+    })
+
+    shiny::observeEvent(loadings(), {
+      if (is(loadings(), "data.frame")) {
+        write.dbtable(r$db, "loadings", loadings())
+      }
+    })
+
+    shiny::observeEvent(z(), {
+      if (is(z(), "data.frame")) {
+        write.dbtable(r$db, "z", z())
+      }
+    })
+    
 
   })
 }

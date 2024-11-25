@@ -74,10 +74,13 @@ mod_database_server <- function(id, r) {
       # By default test postgres connection
       tryCatch(
          expr = {
+          print("initial connection attempt")
           # Fetch credentials
           cred = credentials()
+          print(cred)
           # Connect as superuser
           db = connect.database(instantiatePostgreSQL(cred, superuser = TRUE))
+          print("Established connection")
           # Check if normal user exists
           user_exists = getElement(cred, "user") %in% database.users(db)$usename
           # Create new user if user does not exist
@@ -88,6 +91,7 @@ mod_database_server <- function(id, r) {
               password = getElement(cred, "password")
             )
           }
+          print("About to create schema")
           # Check if schema for user exists
           schema_exists = getElement(cred, "user") %in% database.schemas(db)
           # Create new user schema if user schema does not exist
@@ -105,7 +109,11 @@ mod_database_server <- function(id, r) {
           return(db)
         },
         # If postgres connection fails return SQLite connection
-        error = function(e) connect.database(instantiateSQLite())
+        error = function(e) {
+          print("Failed")
+          print(e)
+          return(connect.database(instantiateSQLite()))
+        }
       )
     })
 
@@ -343,6 +351,27 @@ mod_database_server <- function(id, r) {
           # TabPanel content
           shiny::uiOutput(ns("ui_dbtype_radiobutton"))
         ),
+        
+        # TabBox panel 2
+        shiny::tabPanel(
+          # TabPanel parameters
+          title = r$txt[15],
+          # TabPanel content
+          shiny::fluidRow(
+            # FluidRow content
+            col_6(
+              # Column content
+              shiny::uiOutput(outputId = ns("ui_host_textinput")),
+              shiny::uiOutput(outputId = ns("ui_port_textinput")),
+              shiny::uiOutput(outputId = ns("ui_user_textinput"))
+            ),
+            col_6(
+              # Column content
+              shiny::uiOutput(outputId = ns("ui_password_textinput")),
+              shiny::uiOutput(outputId = ns("ui_dbname_textinput"))
+            )
+          )
+        )
 
       )
     )
@@ -413,7 +442,7 @@ mod_database_server <- function(id, r) {
     output$ui_properties_tabbox <- shiny::renderUI(
       expr = {
         
-        if (r$admin) {
+        # if (r$admin) {
           shinydashboard::tabBox(
             # TabBox parameters
             id = ns("properties_tabbox"),
@@ -442,10 +471,9 @@ mod_database_server <- function(id, r) {
               shiny::textOutput(ns("ui_searchpath"))
             )
           )
-        } else {
-          return(NULL)
-        }
-        
+        # } else {
+        #   return(NULL)
+        # }  
       }
     )
 

@@ -216,7 +216,8 @@ setMethod("create.primarytable",
                   dgroup         NUMERIC not null,
                   rparam         VARCHAR(9999),
                   dparam         VARCHAR(9999),
-                  id             VARCHAR(100)
+                  id             VARCHAR(100),
+                  clname         VARCHAR(100)
               );
             )"
 
@@ -296,7 +297,7 @@ setMethod("delete.data",
             }
 
             # Delete a time series
-            if (methods::is(dataObject, "Timeseries") | methods::is(dataObject, "Metadata")) {
+            if (methods::is(dataObject, "Timeseries")) {
               # Delete from primary table
               sql = paste0(r"(DELETE FROM primary_table WHERE key = ')", dataObject@key, r"(';)")
               DBI::dbExecute(d@con, sql)
@@ -306,6 +307,23 @@ setMethod("delete.data",
               DBI::dbRemoveTable(d@con, paste0(dataObject@name, "_head"))
               DBI::dbRemoveTable(d@con, paste0(dataObject@name, "_readin"))
             }
+            
+            if (methods::is(dataObject, "Metadata")) {
+              # Delete from primary table
+              sql = paste0(r"(DELETE FROM primary_table WHERE key = ')", dataObject@key, r"(';)")
+              DBI::dbExecute(d@con, sql)
+              # Delete table
+              DBI::dbRemoveTable(d@con, paste0(dataObject@name, "_readin"))
+            }
+            
+            if (methods::is(dataObject, "VectorData")) {
+              # Delete from primary table
+              sql = paste0(r"(DELETE FROM primary_table WHERE key = ')", dataObject@key, r"(';)")
+              DBI::dbExecute(d@con, sql)
+              # Delete table
+              DBI::dbRemoveTable(d@con, dataObject@name)
+            }
+              
 
           })
 

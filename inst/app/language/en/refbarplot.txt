@@ -1,0 +1,1 @@
+[9] In this figure, the coefficients of determination of all calculations performed on reference hydrographs are plotted for comparison. The corresponding regression results are displayed by clicking on a bar.

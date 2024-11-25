@@ -69,7 +69,7 @@ Sprache
 Gruppen wählen
 Zeitspanne wählen
 Cache-Auswahl
-Cache
+Zwischenspeichern
 Wählen Sie ein Koordinatenreferenzsystem (CRS)
 Hauptkomponenten (PC)
 EPSG-Code
@@ -118,3 +118,6 @@ Korrelationskoeffizient
 Anzahl Regressoren
 Wert
 Einheit
+Säulendiagramm
+Gestapeltes Säulendiagramm
+Ergebnisse

@@ -20,6 +20,10 @@ mod_home_ui <- function(id){
           shiny::htmlOutput(ns("subtitle")),
         )
       ),
+      
+      # shiny::fluidRow(
+      #   shiny::uiOutput(ns("plot_panel"))
+      # ),
 
       shiny::fluidRow(
         shinydashboard::box(
@@ -150,6 +154,27 @@ mod_home_server <- function(id, r){
     output$subtitle = shiny::renderUI(
       h4(r$txt[["An application for principal component analysis with time series"]])
     )
+    
+    # p = function() {
+    #   df = data.frame(
+    #     x = rnorm(100),
+    #     y = rnorm(100)
+    #   )
+    #   ggplot2::ggplot(df, ggplot2::aes(x = x, y = y)) +
+    #     ggplot2::geom_point()
+    # }
+    
+    # output$plot_panel = shiny::renderUI({
+    #   po = methods::new(
+    #     "PlotPanel", 
+    #     name = "xyz", 
+    #     caption = "Bildunterschrift",
+    #     plot = list(p())
+    #   )
+    #   plotServer(po, r)
+    #   po@name <- ns(po@name)
+    #   return(plotUI(po)())
+    # })
 
   })
 }

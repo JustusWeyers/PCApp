@@ -212,6 +212,12 @@ setMethod("boxServer",
               # observeEvent(ids(), {
               #   r$primary_table <- get.table(r$db, "primary_table")
               # })
+              
+              ## Observe delete button
+              shiny::observeEvent(input[[paste0(RANDOMADDRESS, "_delete_button")]], {
+                # Add data to delete queue
+                group_server$delete_data <- append(group_server$delete_data, obj@name)
+              })
 
 
               ##########
@@ -230,9 +236,18 @@ setMethod("boxServer",
                       shiny::uiOutput(ns("ui_table_head"))
                       # style = "overflow-x: scroll;"
                     )
+                  ),
+                  shiny::fluidRow(
+                    col_2(
+                      shiny::uiOutput(ns("ui_delete_button"))
+                    )
                   )
                 )
               })
+              
+              output$ui_delete_button <- shiny::renderUI(
+                shiny::actionButton(ns(paste0(RANDOMADDRESS, "_delete_button")), label = r$txt[32], width = "100%")
+              )
 
               ####
 

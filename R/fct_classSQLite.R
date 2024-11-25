@@ -147,7 +147,8 @@ setMethod("create.primarytable",
               dgroup         NUMERIC   NOT NULL,
               rparam         CHAR(9999),
               dparam         CHAR(9999),
-              id             CHAR(100)
+              id             CHAR(100),
+              clname         CHAR(100)
               );
             )"
 
