@@ -48,7 +48,7 @@ Group management
 Read options
 Select function to read data
 Group color
-Head
+Filehead
 Data
 Table
 Selection
@@ -121,3 +121,7 @@ Units
 Barplot
 Stacked barplot
 Results
+Graph
+File
+Delete File
+Group

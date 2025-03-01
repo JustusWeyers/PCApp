@@ -13,7 +13,9 @@ setClass("PlotPanel",
            caption = "character",
            plot = "list",
            placeholder = "list",
-           fillins = "character"
+           fillins = "character",
+           clickable = "logical",
+           height = "numeric"
          ),
          prototype = list(
            name = NA_character_,
@@ -26,7 +28,9 @@ setClass("PlotPanel",
               ggplot2::geom_text(ggplot2::aes(x = x, y = y, label = text)) +
               ggplot2::theme_void()
            ),
-           fillins = NA_character_
+           fillins = NA_character_,
+           clickable = FALSE,
+           height = 400
          )
 )
 
@@ -49,14 +53,27 @@ setMethod("plotUI",
                 shinydashboard::box(
                   width = "100%", solidHeader = TRUE,
                   col_12(
-                    shiny::plotOutput(ns("plot"), click="plot_click"),
+                    shiny::uiOutput(
+                      outputId = ns("ui_plot")
+                    )
                   ),
                   col_10(
-                    shiny::uiOutput(ns("caption"))
+                    span(
+                      shiny::uiOutput(
+                        outputId = ns("caption")
+                      ), 
+                      style="color:gray; font-size:8.0pt"
+                    )
                   ),
                   col_2(
-                    fluidRow(column(12, div(
-                      shiny::uiOutput(ns("download_images_button")), style = "float: right")))
+                    fluidRow(
+                      col_12(
+                        div(
+                          shiny::uiOutput(ns("download_images_button")), 
+                          style = "float: right"
+                        )
+                      )
+                    )
                   )
                 )
                 
@@ -80,6 +97,9 @@ setMethod("plotServer",
               
               ####
               
+              # 1. Functions
+              
+              # Helper to replace placeholders in caption with fillins
               replace = function(caption, fillins) {
                 for (fillin in fillins) {
                   caption = sub("#s", fillin, caption)
@@ -87,29 +107,14 @@ setMethod("plotServer",
                 return(caption)
               }
               
-              output$caption = shiny::renderUI(
-                if (length(obj@plot) > 0) {
-                  print(replace(obj@caption, obj@fillins))
-                  return(shiny::withMathJax(
-                    replace(obj@caption, obj@fillins)
-                  ))
-                }
-              )
+              # 2. Server functions
               
-              output$download_images_button = shiny::renderUI(
-                if (length(obj@plot) > 0) {
-                  shiny::downloadButton(ns("download_images"), label = r$txt[[102]], class = "btn-xs")
-                }
-              )
+              # Observer for clicks
+              shiny::observeEvent(input$plot_click, {
+                r$click = append(list(name = obj@name), input$plot_click)
+              })
               
-              output$plot = shiny::renderPlot(
-                if (length(obj@plot) > 0) {
-                  obj@plot[[1]]
-                } else {
-                  obj@placeholder[[1]]
-                }
-              )
-              
+              # Download handler
               output$download_images = shiny::downloadHandler(
                 filename = paste0(obj@name, ".", r$settings[["img_format"]]),
                 content = function(file) {
@@ -120,6 +125,54 @@ setMethod("plotServer",
                     width = r$settings[["img_width"]], 
                     height = r$settings[["img_height"]], 
                     units = r$settings[["img_unit"]]
+                  )
+                }
+              )
+              
+              # 3. UI Elements
+              
+              # Caption
+              output$caption = shiny::renderUI(
+                if (length(obj@plot) > 0) {
+                  return(shiny::withMathJax(
+                    replace(obj@caption, obj@fillins)
+                  ))
+                }
+              )
+              
+              # Actual plot
+              output$plot = shiny::renderPlot(
+                if (length(obj@plot) > 0) {
+                  obj@plot[[1]]
+                } else {
+                  obj@placeholder[[1]]
+                }
+              )
+              
+              output$ui_plot = shiny::renderUI(
+                if (obj@clickable) {
+                  shiny::plotOutput(
+                    outputId = ns("plot"), 
+                    click=ns("plot_click"),
+                    width = "100%",
+                    height = obj@height
+                  )
+                } else {
+                  shiny::plotOutput(
+                    outputId = ns("plot"),
+                    width = "100%",
+                    height = obj@height
+                  )
+                }
+              )
+              
+              # Actionbutton
+              output$download_images_button = shiny::renderUI(
+                if (length(obj@plot) > 0) {
+                  shiny::downloadButton(
+                    outputId = ns("download_images"), 
+                    label = r$txt[[102]], 
+                    class = "btn-xs"
                   )
                 }
               )

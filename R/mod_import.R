@@ -104,7 +104,7 @@ mod_import_server <- function(id, r, dtype, predefined_groups = c()){
             d = r$db,
             table = "datagroup_table",
             values = data.frame(
-              name = input$groupname,
+              name = gsub(" ", "_", trimws(input$groupname)),
               dtype = dtype,
               gparam = jsonlite::toJSON(list(color = "#BEBEBE"))
             )

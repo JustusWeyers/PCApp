@@ -12,6 +12,13 @@ mod_PCA_Linear_regression_ui <- function(id){
   
   ## 5. Regressions
   
+  ## The fifth tabPanel is intended to show the possibilities of calculating 
+  ## so-called reference hydrographs by means of multiple linear regression 
+  ## using a small number of principal components. For this purpose, the 
+  ## reference hydrographs obtained are compared with the original time series 
+  ## in a plot. It is possible to view the regression parameters and to add 
+  ## further principal components as regressors.
+  
   shiny::tabPanel(
     # Title of the tabPanel
     shiny::textOutput(
@@ -22,17 +29,11 @@ mod_PCA_Linear_regression_ui <- function(id){
       shiny::uiOutput(
         outputId = ns("ui_header7")
       ),
-      fluidRow(
+
+      shiny::fluidRow(
         col_12(
-          shinydashboard::box(
-            width = "100%", solidHeader = TRUE,
-            shiny::fluidRow(
-              col_12(
-                shiny::uiOutput(
-                  ns("ref_ts_plot")
-                )
-              )
-            )
+          shiny::uiOutput(
+            ns("ref_ts_plot")
           )
         )
       ),
@@ -108,15 +109,6 @@ mod_PCA_Linear_regression_server <- function(id, r){
         ref_server$selected_id = refhydr()$hashs[sample.int(nrow(refhydr()), 1)]
       }
       
-      # plotids = ids(ref_server$primary_table, ref_server$selected_id)
-      # 
-      # sub = paste0(
-      #   nms(plotids, metadata()),
-      #   " (",
-      #   plotids,
-      #   ")"
-      #   )
-      
       plotdf = refhydr()[refhydr()$hashs == ref_server$selected_id,] |>
         tidyr::unnest(augment)
       
@@ -126,16 +118,12 @@ mod_PCA_Linear_regression_server <- function(id, r){
       p = ggplot2::ggplot(plotdf) +
         ggplot2::geom_line(ggplot2::aes(x = timestamp, y = ts), color = "grey") +
         ggplot2::geom_line(ggplot2::aes(x = timestamp, y = .fitted)) +
-        ggplot2::xlab(r$txt[[115]]) +
         ggplot2::ylab(r$txt[[119]]) +
-        # ggplot2::labs(
-        #   title = r$txt[[116]],
-        #   subtitle = sub
-        # ) +
+        ggplot2::theme_minimal() +
         ggplot2::theme(
-          plot.title = ggplot2::element_text(face = "bold", size = 12)
-        ) +
-        ggplot2::theme_minimal()
+          plot.title = ggplot2::element_text(face = "bold", size = 12),
+          axis.title.x = ggplot2::element_blank()
+        )
       return(p)
     })
     
@@ -175,11 +163,14 @@ mod_PCA_Linear_regression_server <- function(id, r){
     
     # 3. Observers
     
-    observeEvent(input$bar_click, {
-      i = round(input$bar_click$y)
-      ref_server$selected_id = refhydr()$hashs[order(refhydr()$rsq)][i]
+    shiny::observeEvent(r$click, {
+      
+      if (r$click$name == "rsquaredbarplot") {
+        i = round(r$click$y)
+        ref_server$selected_id = refhydr()$hashs[order(refhydr()$rsq)][i]
+      }
+
     })
-    
     
     glance = shiny::reactive({
       df = refhydr()
@@ -207,22 +198,42 @@ mod_PCA_Linear_regression_server <- function(id, r){
         "PlotPanel", 
         name = "referencehydrograph", 
         caption = r$txt[["refhydr.txt"]],
-        fillins = c(hash, rsq),
-        plot = list(ref_ts_plot())
+        fillins = c(names_ids(ref_server$primary_table, hash), rsq),
+        plot = list(ref_ts_plot()),
+        height = 200
       )
       plotServer(po, r)
       po@name <- ns(po@name)
       return(plotUI(po)())
     })
     
-    output$ref_bar_plot = shiny::renderPlot({
+    output$ref_bar_plot = shiny::renderUI({
+      # Create plot data.frame
       plotdf = refhydr()
-      ggplot2::ggplot(plotdf, ggplot2::aes(x = stats::reorder(hashs, rsq), y = rsq)) +
-        ggplot2::geom_bar(stat = "identity") +
-        ggplot2::ylim(c(0, 1)) +
-        ggplot2::coord_flip() +
-        ggplot2::ylab("r^2") +
-        ggplot2::theme_minimal()
+      plotdf$names = names_ids(ref_server$primary_table, plotdf$hashs)
+      plotdf$color = color(ref_server$primary_table, ref_server$datagroup_table, plotdf$hashs)
+  
+      # Build ggplot
+      ggp = ggplot2::ggplot(plotdf, ggplot2::aes(y = stats::reorder(names, rsq), x = rsq)) +
+        ggplot2::geom_bar(stat = "identity", fill = plotdf$color) +
+        ggplot2::xlim(c(0, 1)) +
+        ggplot2::xlab(expression(~r^"2")) +
+        ggplot2::theme_minimal() +
+        ggplot2::theme(axis.title.y = ggplot2::element_blank(), legend.position = "none") +
+        ggplot2::scale_y_discrete(labels = scales::wrap_format(20))
+      
+      # Instantiate PlotPanel-Object
+      ppo = methods::new(
+        "PlotPanel", 
+        name = "rsquaredbarplot", 
+        caption = "Placeholder",
+        fillins = "none",
+        plot = list(ggp),
+        clickable = TRUE
+      )
+      plotServer(ppo, r)
+      ppo@name <- ns(ppo@name)
+      return(plotUI(ppo)())
     })
     
     output$ui_regression_pcs = shiny::renderUI(
@@ -234,15 +245,7 @@ mod_PCA_Linear_regression_server <- function(id, r){
         inline = TRUE,
       )
     )
-    
-    output$barplot = shiny::renderUI(
-      shiny::plotOutput(
-        outputId = ns("ref_bar_plot"),
-        click = ns("bar_click"),
-        height = 200 + 10*nrow(refhydr())
-      )
-    )
-    
+
     output$ui_header7 <- shiny::renderUI({
       shiny::titlePanel(r$txt[[95]])
     })
@@ -250,8 +253,25 @@ mod_PCA_Linear_regression_server <- function(id, r){
     output$ui_tab_title_regression <- shiny::renderText(r$txt[93])
     
     output$glance = DT::renderDataTable(
-      options = list(scrollX = TRUE),
-      selection = 'single',
+      
+      server = FALSE,
+
+      extensions = 'Buttons',
+      
+      options = list(
+        scrollX = TRUE,
+        selection = 'single',
+        paging = TRUE,
+        searching = TRUE,
+        fixedColumns = TRUE,
+        autoWidth = TRUE,
+        ordering = TRUE,
+        dom = 'tB',
+        buttons = c('csv')
+      ),
+      
+      class = "display",
+      
       glance()
     )
     
@@ -263,25 +283,13 @@ mod_PCA_Linear_regression_server <- function(id, r){
           fluidRow(
             col_12(
               col_6(
-                shinydashboard::box(
-                  width = "100%", solidHeader = TRUE,
-                  shiny::fluidRow(
-                    col_12(
-                      shiny::uiOutput(ns("barplot"))
-                    )
-                  )
+                shiny::uiOutput(
+                  ns("ref_bar_plot")
                 )
               ),
               col_6(
-                shinydashboard::box(
-                  width = "100%", solidHeader = TRUE,
-                  shiny::fluidRow(
-                    col_12(
-                      shiny::verbatimTextOutput(
-                        outputId = ns("ref_summary")
-                      )
-                    )
-                  )
+                shiny::verbatimTextOutput(
+                  outputId = ns("ref_summary")
                 )
               )
             )

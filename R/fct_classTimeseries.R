@@ -80,7 +80,7 @@ setMethod("boxServer",
           definition = function(obj, r, group_server) {
             server <- shiny::moduleServer(obj@name, function(input, output, session) {
               ns <- session$ns
-
+              
               ####
 
               ##################
@@ -140,7 +140,7 @@ setMethod("boxServer",
                     hlines = c(head(hlines, n = 30), "...")
                   }
                   # Create string
-                  txt = toString(paste0(hlines, "\n")) #, collapse = '')
+                  txt = toString(paste0(hlines, collapse = "\n")) #,  '')
                   # Return string containing head lines
                   return(txt)
                 }
@@ -207,10 +207,11 @@ setMethod("boxServer",
               ### UI ###
               ##########
 
-              output$ui_table_head = shiny::renderTable({
+              output$ui_table_head = DT::renderDataTable({
                 d = timeseries_server$data
                 d$timestamp = as.character(d$timestamp)
-                return(head(d))
+                colnames(d) = c(r$txt[115], r$txt[119])
+                return(d)
               })
 
               output$ui_headdata = shiny::renderText({
@@ -236,20 +237,35 @@ setMethod("boxServer",
 
               output$ui_databox = shiny::renderUI({
                 shiny::fluidRow(
-                  col_4(
-                    h3(r$txt[51]),
-                    shiny::textOutput(ns("ui_headdata")),
-                    h3(r$txt[52]),
-                    shiny::tableOutput(ns("ui_table_head")),
-                    shiny::uiOutput(ns("ui_option_box"))
+                  shiny::fluidRow(
+                    col_12(
+                      col_6(
+                        h3(r$txt[51]),
+                        shiny::verbatimTextOutput(ns("ui_headdata")),
+                      ),
+                      col_6(
+                        h3(r$txt[124]),
+                        shiny::plotOutput(ns("ui_timeseries_plot")),
+                      )
+                    )
                   ),
-                  col_8(
-                    shiny::plotOutput(ns("ui_timeseries_plot")),
-                    shiny::uiOutput(ns("ui_mapbox")),
-                    shiny::uiOutput(ns("ui_delete_button"))
-
+                  shiny::fluidRow(
+                    col_12(
+                      col_6(
+                        h3(r$txt[52]),
+                        DT::dataTableOutput(ns("ui_table_head")),
+                        shiny::uiOutput(ns("ui_option_box"))
+                      ),
+                      col_6(
+                        h3(r$txt[60]),
+                        shiny::uiOutput(ns("ui_mapbox")),
+                        h3(r$txt[126]),
+                        shiny::uiOutput(ns("ui_delete_button"))
+                      )
+                    )
                   )
                 )
+
               })
 
               ####
@@ -261,13 +277,11 @@ setMethod("boxServer",
 setMethod("clean_data",
           methods::signature(dataobject = "Timeseries"),
           function (dataobject, db, options) {
-            print("clean_data")
 
             data = get.table(db, paste0(dataobject@name, "_readin"))
 
             # Central column names
             central_cnms = unlist(options)[unname(unlist(options)) %in% colnames(data)]
-            print(central_cnms)
 
             df = data[,central_cnms]
 
@@ -291,8 +305,6 @@ setMethod("clean_data",
 
             colnames(df) <- c("timestamp", dataobject@name)
             
-            print("/clean_data")
-
             return(df)
 
           }

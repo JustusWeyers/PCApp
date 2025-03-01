@@ -41,6 +41,8 @@ setMethod("connect.database",
           methods::signature(d = "PostgreSQL"),
           function (d) {
             # Check if connection to database is possible
+            print("postgres -> connect.database")
+            print(d@user)
             con_check <- DBI::dbCanConnect(
               RPostgres::Postgres(),
               user = d@user,
@@ -49,6 +51,8 @@ setMethod("connect.database",
               port = d@port,
               dbname = d@dbname
             )
+            print(paste("CON-CHECK:", con_check))
+
             # If connection to database is possible connect
             if (con_check == TRUE) {
               d@con <- DBI::dbConnect(

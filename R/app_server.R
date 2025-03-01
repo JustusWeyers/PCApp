@@ -15,8 +15,6 @@ app_server <- function(input, output, session) {
   ### Global reactive values ###
   ##############################
 
-  # waiter::autoWaiter(id = NULL, html = NULL, color = NULL, image = "", fadeout = FALSE)
-
   r <- shiny::reactiveValues(
     import_trigger = FALSE,
     cache_selection_trigger = FALSE,
@@ -24,8 +22,15 @@ app_server <- function(input, output, session) {
   )
 
   # Environment
-  r$ENV = Sys.getenv()
-
+  r$ENV = c(
+    Sys.getenv(), 
+    list(SHINYPROXY_USERNAME = "Weyers", SHINYPROXY_USERGROUPS = "admin", Weyers_DBPW = "54321" )   #### DELETE ME !!!!1!1!!!!!1!
+    # list(SUPER_USER = "suppi", SHINYPROXY_USERGROUPS = "suppipassword" )  #### DELETE ME !!!!1!1!!!!!1!
+  )
+  
+  print(shiny::isolate(r$ENV))
+  
+  
   r$settings = list(
     crs = 25833,
     flip_pca = FALSE
@@ -41,34 +46,67 @@ app_server <- function(input, output, session) {
   observeEvent(r$lang, {
     r$txt <- internal$apptext[[r$lang]]
   })
-
-  # Plots
-  r$plots = list()
+  
+  # User
+  
+  r$webmode = golem::get_golem_options("webmode")
+  r$shiny_proxy = "SHINYPROXY_USERNAME" %in% names(shiny::isolate(r$ENV))
+  
+  if (shiny::isolate(r$webmode) & shiny::isolate(r$shiny_proxy)) {
+    r$user = getElement(shiny::isolate(r$ENV), "SHINYPROXY_USERNAME")
+    r$usergroup = getElement(shiny::isolate(r$ENV), "SHINYPROXY_USERGROUPS")
+    r$userdbpw = getElement(shiny::isolate(r$ENV), paste0(shiny::isolate(r$user), "_DBPW"))
+    r$superuser = getElement(shiny::isolate(r$ENV), "SUPER_USER")
+    r$superuserPW = getElement(shiny::isolate(r$ENV), "SUPER_USER_PW")
+  } else {
+    r$user = getElement(shiny::isolate(r$ENV), "USERNAME")
+    r$usergroup = NA_character_
+    r$superuser = getElement(internal$acc, "superuser")
+    r$superuserPW = getElement(internal$acc, "superpassword")
+  }
   
   # Admin rights
-  if (golem::get_golem_options("webmode")) {
-    if ("SHINYPROXY_USERGROUPS" %in% names(shiny::isolate(r$ENV))) {
-      usergroup = getElement(r$ENV, "SHINYPROXY_USERGROUPS")
-      if (identical(tolower(usergroup), "admin")) {
-        r$admin = TRUE
-      } else {
-        r$admin = FALSE
-      }
-    } else {
-      r$admin = FALSE
-    }
-  } else {
+  if (shiny::isolate(r$webmode) & identical(shiny::isolate(r$usergroup), "admin")) {
+    r$admin = TRUE
+  } 
+  if (shiny::isolate(r$webmode) & !(identical(shiny::isolate(r$usergroup), "admin"))) {
+    r$admin = FALSE
+  }
+  if (!(shiny::isolate(r$webmode))) {
     r$admin = TRUE
   }
-
-  # tmap settings
-  # tmap::tmap_mode("plot")
 
   #########################
   ### Server UI outputs ###
   #########################
 
   # Render sidebar menu
+  
+  output$user = shiny::renderUI(
+    
+    if (r$webmode) {
+      
+      if (r$admin) {
+        text = paste(shiny::isolate(r$user), "(Admin)")
+      } else {
+        text = shiny::isolate(r$user)
+      }
+      
+      ui = shiny::fluidRow(
+        col_12(
+          hr(style = "border-top: 1px solid #c1c9bf;"),
+          shinydashboard::sidebarMenu(
+            id="user",
+            sidebarmenu <- shinydashboard::sidebarMenu(
+              shinydashboard::menuItem(text = text, icon = shiny::icon("user"))
+            )
+          )
+        )
+      )
+      return(ui)
+    }
+  )
+  
   output$sidebarmenu <- shinydashboard::renderMenu(
     render_sidebar(apptext = r$txt[c(59, 29, 54, 55, 56, 1)])
   )

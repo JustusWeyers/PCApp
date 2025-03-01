@@ -122,7 +122,11 @@ mod_PCA_server <- function(id, r){
     shiny::observeEvent(c(r$db, r$cache_selection_trigger), {
       pca_server$primary_table = get.table(r$db, "primary_table")
       pca_server$datagroup_table = get.table(r$db, "datagroup_table")
-      r$ts = get_timeseries(r$db)
+      if (ncol(get_timeseries(r$db)) >=3) {
+        r$ts = get_timeseries(r$db)
+      } else {
+        r$ts = data.frame()
+      }
       pca_server$selected_id = NULL
     })
     
@@ -136,25 +140,24 @@ mod_PCA_server <- function(id, r){
       }
     })
     
-    shiny::observeEvent(pcs(), {
-      if (is(pcs(), "data.frame")) {
-        pcs = dplyr::select(pcs(), "timestamp", dplyr::everything())
-        write.dbtable(r$db, "principal_components", pcs)
-      }
-    })
-
-    shiny::observeEvent(loadings(), {
-      if (is(loadings(), "data.frame")) {
-        write.dbtable(r$db, "loadings", loadings())
-      }
-    })
-
-    shiny::observeEvent(z(), {
-      if (is(z(), "data.frame")) {
-        write.dbtable(r$db, "z", z())
-      }
-    })
-    
+    # shiny::observeEvent(pcs(), {
+    #   if (is(pcs(), "data.frame")) {
+    #     pcs = dplyr::select(pcs(), "timestamp", dplyr::everything())
+    #     write.dbtable(r$db, "principal_components", pcs)
+    #   }
+    # })
+    # 
+    # shiny::observeEvent(loadings(), {
+    #   if (is(loadings(), "data.frame")) {
+    #     write.dbtable(r$db, "loadings", loadings())
+    #   }
+    # })
+    # 
+    # shiny::observeEvent(z(), {
+    #   if (is(z(), "data.frame")) {
+    #     write.dbtable(r$db, "z", z())
+    #   }
+    # })
 
   })
 }

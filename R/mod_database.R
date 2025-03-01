@@ -74,10 +74,8 @@ mod_database_server <- function(id, r) {
       # By default test postgres connection
       tryCatch(
          expr = {
-          print("initial connection attempt")
           # Fetch credentials
           cred = credentials()
-          print(cred)
           # Connect as superuser
           db = connect.database(instantiatePostgreSQL(cred, superuser = TRUE))
           print("Established connection")
@@ -174,25 +172,31 @@ mod_database_server <- function(id, r) {
         # Check if alternatively username is available from env. This might
         # be the environmental variable SHINYPROXY_USERNAME or USERNAME. This
         # depends on the environment the application is launched in.
-        if ("SHINYPROXY_USERNAME" %in% names(r$ENV)) {
+        if (shiny::isolate(r$webmode) & shiny::isolate(r$shiny_proxy)) {
           cred["user"] <- tolower(getElement(
             object = r$ENV,
             name = "SHINYPROXY_USERNAME"
           ))
-        } else if ("USERNAME" %in% names(r$ENV)) {
+        }
+        
+        if (!(shiny::isolate(r$webmode)) & "USERNAME" %in% names(r$ENV)) {
           cred["user"] <- tolower(getElement(
             object = r$ENV,
             name = "USERNAME"
           ))
         }
+        
         # Check if alternatively password is available from env. The name
         # of the environmental password variable depends on the cred user.
-        if (paste0(cred["user"], "_db_password") %in% names(r$ENV)) {
+        if (r$webmode & paste0(r$user, "_DBPW") %in% names(r$ENV)) {
           cred["password"] <- getElement(
             object = r$ENV,
-            name = paste0(cred["user"], "_db_password")
+            name = paste0(r$user, "_DBPW")
           )
         }
+        
+        print("### CRED")
+        print(cred)
         # Return updated credentials
         return(cred)
       }
@@ -203,9 +207,21 @@ mod_database_server <- function(id, r) {
     ## Initial connection once
     r$db <- shiny::isolate(expr = init_connect())
 
-    ## Connect to database
+    ## Radio button -> Connect to database
     shiny::observeEvent(
       eventExpr = input$dbtype,
+      handlerExpr = {
+        
+        # At first disconnect
+        DBI::dbDisconnect(r$db@con)
+        # Connect selected database type
+        r$db = connect()
+      }
+    )
+    
+    ## Refresh button -> Connect to database 
+    shiny::observeEvent(
+      eventExpr = input$db_reload,
       handlerExpr = {
         # At first disconnect
         DBI::dbDisconnect(r$db@con)
@@ -214,6 +230,7 @@ mod_database_server <- function(id, r) {
       }
     )
 
+    ## Clead database
     observeEvent(input$clear_button, {
       clear.db(r$db)
       session$reload()
@@ -368,7 +385,8 @@ mod_database_server <- function(id, r) {
             col_6(
               # Column content
               shiny::uiOutput(outputId = ns("ui_password_textinput")),
-              shiny::uiOutput(outputId = ns("ui_dbname_textinput"))
+              shiny::uiOutput(outputId = ns("ui_dbname_textinput")),
+              shiny::actionButton(inputId = ns("db_reload"), label = "", icon = shiny::icon("refresh"))
             )
           )
         )

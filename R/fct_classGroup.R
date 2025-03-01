@@ -389,18 +389,20 @@ setMethod("groupServer",
                 }
                 
                 shiny::withProgress(message = r$txt[[108]], value = 0, {
-                  lapply(group_server$data_objects, function(o) {
+                  data = lapply(group_server$data_objects, function(o) {
                     shiny::incProgress(1/n, detail = o@name)
                     indata = get.table(r$db, paste0(o@name, "_readin"))
                     cldata = clean_data(dataobject = o, db = r$db, options = group_option_inputs())
-                    print(head(cldata))
                     write.dbtable(r$db, paste0(o@name, "_clean"), cldata)
+                    return(cldata)
                   })
                   
                   # Mere if dtype is "Timeseries"
                   if (identical(obj@dtype, "Timeseries")) {
-                    shiny::incProgress(1/n, detail = r$txt[[109]])
-                    mgt_ts(r$db, names(group_server$data_objects))
+                    if (all(sapply(data, function(df) !all(is.na(df$timestamp))))) {
+                      shiny::incProgress(1/n, detail = r$txt[[109]])
+                      mgt_ts(r$db, names(group_server$data_objects))
+                    }
                   }
   
                   if (any("Metadata" %in% pt$dtype) & any("Timeseries" %in% pt$dtype)) {
@@ -466,15 +468,16 @@ setMethod("groupServer",
                   o@name <- ns(o@name)
                   # Render empty box
                   shinydashboard::box(
-                    title = oname,
+                    title = o@dparam$displayname,
                     width = 12, collapsible = TRUE, collapsed = TRUE,
                     # Box content
                     boxUI(o)(),
                     fluidRow(
-                      col_2(
+                      col_12(
                         shiny::actionButton(
                           inputId = ns(paste0(RANDOMADDRESS, oname, "_details")),
-                          label = "Show Details", class = "btn-xs")
+                          label = "", icon = shiny::icon("refresh")
+                        )
                       )
                     )
                   )

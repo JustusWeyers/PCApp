@@ -49,7 +49,6 @@ mydata = function(d, name, readm, g) {
   # Request text from database
   g[["text"]] <- get.table(d, name)$data
   
-  print("# mydata")
   tryCatch(expr = {
     d = do.call(readm, g)
     str(d)
@@ -111,8 +110,8 @@ join_timeseries_with_metadata = function(db) {
   metadata = metadata[sapply(metadata, function(n) paste0(n, "_clean") %in% user_tables)]
   
   if (length(metadata)>0) {
-    ids = unique(unlist(lapply(metadata, function(md) {
-      get.table(db, paste0(md, "_clean"))$id
+    ids = unique(dplyr::bind_rows(lapply(metadata, function(md) {
+      get.table(db, paste0(md, "_clean"))[,c("id", "name")]
     })))
     
     matched_ids = sapply(timeseries, function(ts) {
@@ -121,9 +120,9 @@ join_timeseries_with_metadata = function(db) {
       } else {
         return(NULL)
       }
-      matches = sapply(ids, grepl, x = head)
+      matches = sapply(ids$id, grepl, x = head)
       if (any(matches)) {
-        return(ids[matches][1])
+        return(ids$id[matches][1])
       } else {
         return(NULL)
       }
@@ -136,13 +135,24 @@ join_timeseries_with_metadata = function(db) {
       return(NULL)
     }
     
+    clname = sapply(unname(matched_ids), function (id) {
+      if (!is.na(ids[ids$id == id, "name"])) {
+        return(ids[ids$id == id, "name"])
+      } else {
+        return(NA)
+      }
+    })
+      
+    # ids[ids$id %in% , "name"]
+    
     matched_ids = trimws(format(matched_ids, scientific = FALSE))
-    matched_ids = data.frame(name = names(matched_ids), id = unname(matched_ids))
-    primary_table = primary_table[,colnames(primary_table) != "id"]
+    matched_ids = data.frame(name = names(matched_ids), id = unname(matched_ids), clname = clname)
+    primary_table = primary_table[,!(colnames(primary_table) %in% c("id", "clname"))]
     primary_table = merge(primary_table, matched_ids, by = "name", all.x = TRUE)
     
     lapply(primary_table$key, function(key) {
       change.tablevalue(db, "primary_table", key, "id", primary_table[primary_table$key == key,"id"])
+      change.tablevalue(db, "primary_table", key, "clname", primary_table[primary_table$key == key, "clname"])
     })
     
     colnames(matched_ids) = c("hash", "id")
@@ -159,7 +169,7 @@ join_timeseries_with_metadata = function(db) {
       }
     })
 
-    # Return the list in orer to store it in global variable r
+    # Return the list in order to store it in global variable r
     return(metadata_for_global)
     
   }

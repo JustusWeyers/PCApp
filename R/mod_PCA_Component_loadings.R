@@ -25,37 +25,45 @@ mod_PCA_Component_loadings_ui <- function(id){
     shiny::fluidPage(
       # Header 5
       shiny::uiOutput(ns("ui_header5")),
-      shinydashboard::box(
-        width = "100%", solidHeader = TRUE,
-        shiny::fluidRow(
-          col_2(
-            shiny::uiOutput(ns("select_PC"))
-          ),
-          col_10(
-            tabBox(
-              id = "tabset1", width = "100%",
-              tabPanel(
-                "Map",
-                shiny::plotOutput(
-                  ns("ui_geo_loadings_plot"),
-                  width = "100%",
-                  height = "100%"
-                )
-              ),
-              tabPanel(
-                "Interactive Map",
-                "Yet to come"
-              ),
-              tabPanel(
-                "Table",
-                DT::dataTableOutput(
-                  ns("ui_loadings")
-                )
+      
+      shiny::fluidRow(
+        col_10(
+          tabBox(
+            id = "tabset1", width = "100%",
+            tabPanel(
+              "Map",
+              shiny::plotOutput(
+                ns("ui_geo_loadings_plot"),
+                width = "100%",
+                height = 800
+              )
+            ),
+            tabPanel(
+              "Interactive Map",
+              "Yet to come"
+            ),
+            tabPanel(
+              "Table",
+              DT::dataTableOutput(
+                ns("ui_loadings")
               )
             )
           )
+        ),
+        col_2(
+          shiny::uiOutput(ns("select_PC")),
+          shiny::plotOutput(ns("legend"))
+        )
+      ),
+      
+      shiny::fluidRow(
+        col_12(
+          shiny::uiOutput(
+            outputId = ns("grid")
+          )
         )
       )
+      
     )
   )
 }
@@ -157,7 +165,7 @@ mod_PCA_Component_loadings_server <- function(id, r){
         y = loads,
         by = "id"
       )
-      data$id = format(data$id, scientific= FALSE)
+      data$id = format(data$id, scientific = FALSE)
 
       # Return NA free data
       return(data)
@@ -170,16 +178,13 @@ mod_PCA_Component_loadings_server <- function(id, r){
       loadings_server$datagroup_table = get.table(shiny::isolate(r$db), "datagroup_table")
     })
     
-    # observeEvent(geoloadings_plot(), {
-    #   r$plots[["loading_map"]] = format_plot(geoloadings_plot())
-    # })
-    
     output$ui_geo_loadings_plot = shiny::renderPlot(
-      geoloadings_plot(), height = 800, width = 800
+      geoloadings_plot()
     )
     
     geoloadings_plot = shiny::reactive({
-      if (is.null(geo_loadings())) return(NULL)
+      
+      if (is.null(geo_loadings()) | is.null(input$select_PC)) return(NULL)
       plotdf = geo_loadings()[,c("name", "group", "latitude", "longitude", input$select_PC)]
       colnames(plotdf) = c("name", "group", "latitude", "longitude", "PC")
       plotdf = sf::st_as_sf(
@@ -194,7 +199,8 @@ mod_PCA_Component_loadings_server <- function(id, r){
       p = p +
         ggplot2::geom_sf(data = plotdf, ggplot2::aes(col = PC, shape = group), cex = 4) +
         ggplot2::scale_colour_gradient2(low = "blue", mid = "grey90", high = "red", limits=c(-1,1)) +
-        ggplot2::theme_minimal()
+        ggplot2::theme_minimal() +
+        ggplot2::theme(legend.position = "none")
 
       # if(length(input$ui_loadings_rows_selected) > 0){
       #   plotdf_selected = plotdf[input$ui_loadings_rows_selected,]
@@ -210,8 +216,37 @@ mod_PCA_Component_loadings_server <- function(id, r){
       return(p)
     })
     
+    geoloadings_grid = shiny::reactive({
+      geo_plot_grid(
+        df = geo_loadings(), 
+        PCs = pc_names(), 
+        roi = roi(), 
+        crs = r$settings[["crs"]], 
+        labels = c(r$txt[[63]], r$txt[[127]])
+      )
+    })
+      
+    
     output$ui_loadings = DT::renderDataTable(
-      geo_loadings(), selection = 'single'
+      server = FALSE,
+      
+      extensions = 'Buttons',
+      
+      options = list(
+        scrollX = TRUE,
+        selection = 'single',
+        paging = TRUE,
+        searching = TRUE,
+        fixedColumns = TRUE,
+        autoWidth = TRUE,
+        ordering = TRUE,
+        dom = 'tB',
+        buttons = c('csv')
+      ),
+      
+      class = "display",
+      
+      geo_loadings()
     )
     
     output$select_PC = shiny::renderUI({
@@ -226,6 +261,26 @@ mod_PCA_Component_loadings_server <- function(id, r){
     })
     
     output$ui_tab_title_loadings <- shiny::renderText(r$txt[[63]])
+    
+    output$grid = shiny::renderUI({
+      # Instantiate PlotPanel-Object
+      ppo = methods::new(
+        "PlotPanel", 
+        name = "componentLoadingMap", 
+        caption = "Placeholder",
+        fillins = "none",
+        plot = list(plot(geoloadings_grid()[[1]])),
+        height = floor(length(pc_names())/4)*200
+      )
+      plotServer(ppo, r)
+      ppo@name <- ns(ppo@name)
+      return(plotUI(ppo)())
+    })
+    
+    output$legend = shiny::renderPlot(
+      plot(geoloadings_grid()[[2]])
+    )
+    
     
  
   })

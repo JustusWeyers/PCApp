@@ -34,7 +34,10 @@ insert_timeseries = function(d, name, ts) {
 #' @noRd
 
 instantiatePostgreSQL = function(cred, superuser = FALSE) {
+  print("instantiatePostgreSQL function")
+  print(cred)
   if (superuser) {
+    print("SUPERUSER")
     pg = methods::new(
       Class = "PostgreSQL",
       host = getElement(object = cred, name = "host"),

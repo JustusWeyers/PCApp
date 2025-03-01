@@ -48,7 +48,7 @@ Verwaltung der Gruppen
 Einleseoptionen
 Funktion zum Lesen von Daten auswählen
 Farbe der Gruppe
-Kopf
+Dateikopf
 Daten
 Tabelle
 Auswahl
@@ -92,7 +92,7 @@ Paarungen von Komponentenladungen
 Belastung auf
 Lineare Regression
 Korrelationen
-Referenz-Ganglinie
+Referenzhydrograph
 PC auswählen
 Daten auswählen
 Eine Anwendung für Hauptkomponentenanalysen mit Zeitreihen
@@ -121,3 +121,7 @@ Einheit
 Säulendiagramm
 Gestapeltes Säulendiagramm
 Ergebnisse
+Graph
+Datei
+Datei löschen
+Gruppe

@@ -42,28 +42,26 @@ app_ui <- function(request, admin) {
 
       # Sidebar
       shinydashboard::dashboardSidebar(
+        
         br(),
-        # # Shiny image output
-        # shiny::fluidRow(
-        #   col_10(
-        #     shiny::img(
-        #       src = 'www/zalfLogo2.png',
-        #       width = "100%",
-        #       style = "display: block; margin-left: 20px; margin-right: 5px;"
-        #     )
-        #   )
-        # ),
         # hr(style = "border-top: 1px solid #c1c9bf;"),
+        
+        shiny::uiOutput("user"),
+        
+        hr(style = "border-top: 1px solid #c1c9bf;"),
+
         shinydashboard::sidebarMenu(
           id="mytabs",
           shinydashboard::sidebarMenuOutput("sidebarmenu")
         ),
+        
         hr(style = "border-top: 1px solid #c1c9bf;"),
+        
         shiny::fluidRow(
           col_2(
             shiny::img(
               src = 'www/github.svg',
-              width = "100%",
+              height="15px", width="15px",
               style = "display: block; margin-left: 20px; margin-right: auto;"
             )
           ),
